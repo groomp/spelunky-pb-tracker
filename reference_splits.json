@@ -1,0 +1,194 @@
+{
+  "__owner__": "Groomp",
+  "No Gold Low%": {
+    "time": "2:54.445",
+    "splits": {
+      "Mines": "0:38",
+      "Jungle": "1:07",
+      "Ice Caves": "1:44",
+      "Olmec": "33s",
+      "Temple (4-3)": "2:21"
+    }
+  },
+  "Low%": {
+    "time": "2:36.517",
+    "splits": {
+      "Mines": "0:34",
+      "Jungle": "1:04",
+      "Ice Caves": "1:33",
+      "Olmec": "34s",
+      "Temple (4-3)": "2:02"
+    }
+  },
+  "Any%": {
+    "time": "1:46.085",
+    "splits": {
+      "Mines": "0:26",
+      "Jungle": "0:41",
+      "Ice Caves": "1:03",
+      "Olmec": "31s",
+      "Temple (4-3)": "1:14"
+    }
+  },
+  "No Teleporter Chain Hell%": {
+    "time": "4:07.449",
+    "splits": {
+      "Mines": "0:37",
+      "Jungle": "1:28",
+      "Ice Caves": "2:02",
+      "Temple (4-3)": "2:44",
+      "Olmec": "37s",
+      "Hell (5-3)": "3:47"
+    }
+  },
+  "No Teleporter Max Any%": {
+    "time": "3:13.001",
+    "splits": {
+      "Mines": "0:41",
+      "Jungle": "1:10",
+      "Ice Caves": "2:16",
+      "Temple (4-3)": "2:41",
+      "Olmec": "32s",
+      "Worm": "25s",
+      "Mothership": "12s"
+    }
+  },
+  "No Teleporter Any%": {
+    "time": "2:25.643",
+    "splits": {
+      "Mines": "0:42",
+      "Jungle": "1:08",
+      "Ice Caves": "1:33",
+      "Temple (4-3)": "1:52",
+      "Olmec": "33s"
+    }
+  },
+  "Chain Hell%": {
+    "time": "4:07.272",
+    "splits": {
+      "Mines": "0:45",
+      "Jungle": "1:20",
+      "Ice Caves": "1:49",
+      "Temple (4-3)": "2:36",
+      "Olmec": "47s",
+      "Hell (5-3)": "3:51"
+    }
+  },
+  "No Teleporter Max Chain Hell%": {
+    "time": "5:02.186",
+    "splits": {
+      "Mines": "0:44",
+      "Jungle": "1:35",
+      "Worm": "29s",
+      "Mothership": "8s",
+      "Ice Caves": "2:55",
+      "Temple (4-3)": "3:33",
+      "Olmec": "42s",
+      "Hell (5-3)": "4:47"
+    }
+  },
+  "Max Any%": {
+    "time": "2:25.871",
+    "splits": {
+      "Mines": "0:36",
+      "Jungle": "0:51",
+      "Worm": "7s",
+      "Mothership": "7s",
+      "Ice Caves": "1:37",
+      "Temple (4-3)": "1:53",
+      "Olmec": "33s"
+    }
+  },
+  "Max Chain Hell%": {
+    "time": "5:02.186",
+    "splits": {
+      "Mines": "0:44",
+      "Jungle": "1:35",
+      "Ice Caves": "2:55",
+      "Temple (4-3)": "3:33",
+      "Olmec": "42s",
+      "Hell (5-3)": "4:47",
+      "Worm": "29s",
+      "Mothership": "8s"
+    }
+  },
+  "Max Low%": {
+    "time": "4:13.305",
+    "splits": {
+      "Mines": "0:36",
+      "Worm": "32s",
+      "Jungle": "1:38",
+      "Mothership": "21s",
+      "Ice Caves": "2:50",
+      "Temple (4-3)": "3:34",
+      "Olmec": "39s"
+    }
+  },
+  "No Teleporter No Gold Any%": {
+    "time": "2:42.863",
+    "splits": {
+      "Mines": "0:48",
+      "Jungle": "1:21",
+      "Ice Caves": "1:48",
+      "Temple (4-3)": "2:11",
+      "Olmec": "31s"
+    }
+  },
+  "Chain Low% Hell": {
+    "time": "6:22.469",
+    "splits": {
+      "Mines": "0:30",
+      "Jungle": "1:40",
+      "Ice Caves": "2:30",
+      "Temple (4-3)": "3:29",
+      "Olmec": "1:04",
+      "Hell (5-3)": "5:28",
+      "Yama": "54s"
+    }
+  },
+  "No Gold Chain Hell%": {
+    "time": "5:06.461",
+    "splits": {
+      "Mines": "0:37",
+      "Jungle": "1:39",
+      "Ice Caves": "2:25",
+      "Temple (4-3)": "3:21",
+      "Olmec": "35s",
+      "Hell (5-3)": "4:51"
+    }
+  },
+  "No Gold": {
+    "time": "2:31.669",
+    "splits": {
+      "Mines": "0:31",
+      "Jungle": "1:12",
+      "Ice Caves": "1:35",
+      "Temple (4-3)": "1:57",
+      "Olmec": "34s"
+    }
+  },
+  "Big Money": {
+    "time": "7:41.101",
+    "splits": {
+      "Mines": "1:03",
+      "Jungle": "2:09",
+      "Ice Caves": "2:47",
+      "City of Gold": "1:58",
+      "Temple (4-3)": "5:10",
+      "Olmec": "55s",
+      "Hell (5-3)": "6:53",
+      "Yama": "48s"
+    }
+  },
+  "Chain Eggplant%": {
+    "time": "18:54.916",
+    "splits": {
+      "Mines": "2:23",
+      "Jungle": "6:21",
+      "Ice Caves": "10:50",
+      "Temple (4-3)": "14:04",
+      "Olmec": "1:17",
+      "Hell (5-3)": "18:06"
+    }
+  }
+}

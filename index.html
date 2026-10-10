@@ -1,0 +1,2998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PB Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Mirrors mossranking.com's own palette/fonts (scraped from its live
+     stylesheet) for the dashboard chrome only - the actual OBS overlay
+     output (the .corner/.category/.pb/etc elements below) keeps its
+     existing white-text-black-stroke look, since that's a legibility
+     requirement over gameplay footage, not a branding choice, and changing
+     it would change what's actually shown on stream. Quorum (their real
+     heading font) is a paid commercial font, so Fredoka stands in for it -
+     closest free equivalent in spirit (bold, rounded, playful display
+     weight), not a pixel match. Roboto is the literal same font they use.
+     --mr-orange/-hover are their exact button/link colors (#cc621d /
+     #bf5612); --mr-text/-bg/-bg-alt/-border approximate their light
+     content-area palette (their own body color was a dark tan/brown
+     background image behind readable light cards, not a flat color, so
+     these are a plain-background equivalent rather than a literal copy).
+  */
+  :root {
+    --mr-orange: #cc621d;
+    --mr-orange-light: #e8954f;
+    --mr-orange-hover: #bf5612;
+    --mr-text: #f5f5f3;
+    --mr-muted: #b5b3ad;
+    --mr-bg: #262624;
+    --mr-bg-alt: #33322f;
+    --mr-card-bg: #2c2b28;
+    --mr-border: #45443f;
+    --mr-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+    --mr-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.35);
+    --mr-focus-ring: 0 0 0 3px rgba(204, 98, 29, 0.3);
+  }
+
+  html, body {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+
+  html {
+    /* Scales every em-based size below with the OBS source's actual
+       resolution (vmin = smaller of width/height, so this works for both
+       a small corner box and a full 1920x1080+ canvas, landscape or
+       portrait) instead of being tuned for one specific source size. */
+    font-size: clamp(16px, 2.6vmin, 48px);
+  }
+
+  body {
+    color: #fff;
+    background-color: #000;
+    margin: 0;
+    font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  }
+
+  /* OBS Browser Source should use the URL "http://localhost:4226/?transparent"
+     so the page background is see-through over gameplay. A plain browser tab
+     (no query param) gets a solid black background instead of the white a
+     transparent page would otherwise show through to. */
+  body.transparent {
+    background-color: transparent;
+  }
+
+  .text-stroke {
+    -webkit-text-stroke: 2px black;
+    paint-order: stroke fill;
+  }
+
+  /* Three modes, switched by URL (?transparent for OBS, ?compact for your
+     own quick glance, neither for the control dashboard):
+     - default: the dashboard (#settingsPanel) fills the page; the stream
+       corner layout and its toggle button are both hidden - there's
+       nothing to glance at here, just setup.
+     - transparent: ONLY the corner layout shows, full stop - no dashboard,
+       no toggle button, ever. This is what your viewers see, so no UI
+       chrome should be reachable from it.
+     - compact: the corner layout (reordered into one block below) shows
+       by default, with the dashboard toggle-able on top via the button -
+       handy to tweak something without leaving your glance window. */
+  #settingsToggle,
+  #settingsPanel {
+    display: none;
+  }
+
+  body.compact #settingsToggle {
+    display: block;
+  }
+
+  body.compact #settingsPanel.open {
+    display: flex;
+  }
+
+  body:not(.transparent):not(.compact) #settingsPanel {
+    display: flex;
+  }
+
+  .corner {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  body.transparent .corner {
+    display: flex;
+  }
+
+  /* compact mode's .corner display is set further down (display: contents) -
+     it needs its children unwrapped into body's own flex order, not just
+     shown, so it's not simply "display: flex" like the transparent rule
+     above. */
+
+  .bottom-left {
+    left: 20px;
+    align-items: flex-start;
+  }
+
+  .bottom-right {
+    right: 20px;
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  /* Personal "player view" (http://localhost:4226/?compact): everything
+     grouped into one tight block instead of spread across opposite
+     corners, for a quick glance in a small window on your own screen -
+     the stream-facing corner layout above is unaffected. */
+  body.compact {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+
+  /* The stream layout groups splits+category together and pb+rank
+     together (so each pair can be positioned as one unit in a corner).
+     Compact mode wants a different order that cuts across those groups
+     (category, then pb, then rank, then splits) - display:contents makes
+     each piece its own flex item directly in body.compact's order,
+     instead of being stuck next to whatever it's paired with on stream. */
+  body.compact .corner {
+    display: contents;
+  }
+
+  body.compact .bottom-right {
+    text-align: left;
+  }
+
+  /* Not shown at all outside compact mode (the stream-facing overlay
+     stays exactly the white-text-black-stroke look it's always had - this
+     is purely a personal-glance-view touch). Links back to the dashboard
+     (plain "/", no ?compact) when clicked. */
+  #compactFrogLink {
+    display: none;
+  }
+
+  body.compact #compactFrogLink {
+    display: block;
+    order: 1;
+    width: 1.6em;
+    height: 1.6em;
+    -webkit-text-stroke: 0;
+    cursor: pointer;
+  }
+
+  #compactFrogIcon {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  body.compact #categoryLine {
+    order: 2;
+  }
+
+  body.compact #pbText {
+    order: 3;
+  }
+
+  body.compact #rankText {
+    order: 4;
+  }
+
+  body.compact #dateText {
+    order: 5;
+  }
+
+  body.compact #splitsBlock {
+    order: 6;
+  }
+
+  body.compact #wrAttribution {
+    order: 7;
+  }
+
+  /* A splash of the dashboard's own orange on the category name - the
+     biggest, most prominent line here - same as the frog icon, only in
+     compact mode; the stream overlay keeps plain white for legibility. */
+  body.compact .category {
+    color: var(--mr-orange);
+  }
+
+  .category {
+    font-size: 2.6em;
+    font-weight: 700;
+    line-height: 1.15;
+    overflow-wrap: break-word;
+    margin-top: 14px;
+  }
+
+  .pb {
+    font-size: 1.6em;
+    font-weight: 700;
+  }
+
+  .pb.unset {
+    font-size: 1.1em;
+  }
+
+  .rank {
+    font-size: 1em;
+    margin-top: 2px;
+  }
+
+  .date-accomplished {
+    font-size: 0.85em;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+
+  .splits-block {
+    margin-top: 14px;
+  }
+
+  /* One real CSS Grid shared by the header row and every split row below
+     it (each row is display:contents, so its cells become direct grid
+     items) - this is what makes the PB/WR headers land exactly above
+     their columns regardless of how wide any individual row's content is,
+     which independent per-row flexboxes couldn't guarantee. Column count
+     (2 or 3) is set from JS to match however many of PB/WR are active. */
+  .splits-grid {
+    display: grid;
+    column-gap: 10px;
+    row-gap: 3px;
+    font-size: 1.05em;
+  }
+
+  .splits-list,
+  .split-row {
+    display: contents;
+  }
+
+  .split-name {
+    min-width: 7.5em;
+  }
+
+  .split-time {
+    min-width: 3.4em;
+    font-weight: 700;
+  }
+
+  /* display:contents drops .split-header-row's own box, so non-inherited
+     properties (opacity) have to go on its cells directly instead - the
+     inherited ones (font-size/weight/transform/spacing) still cascade
+     through fine. */
+  .split-header-row {
+    font-size: 0.8em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .split-header-row .split-name,
+  .split-header-row .split-time {
+    opacity: 0.65;
+  }
+
+  /* The WR column's player/time attribution, e.g. "WR: Player 1:46" - sits
+     directly under the PB time, and only when the WR column itself is on. */
+  .wr-attribution {
+    font-size: 0.75em;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+
+  .split-row .split-time.wr-time {
+    opacity: 0.8;
+  }
+
+  #settingsToggle {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    background: var(--mr-orange);
+    color: #fff;
+    border: 1px solid var(--mr-orange);
+    border-radius: 6px;
+    padding: 4px 9px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-family: "Roboto", sans-serif;
+    -webkit-text-stroke: 0;
+    box-shadow: var(--mr-shadow-sm);
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+
+  #settingsToggle:hover {
+    background: var(--mr-orange-hover);
+    border-color: var(--mr-orange-hover);
+    transform: translateY(-1px);
+  }
+
+  #settingsToggle:active {
+    transform: translateY(0);
+  }
+
+  #settingsPanel {
+    position: relative;
+    flex-direction: column;
+    padding: 28px 28px 24px;
+    box-sizing: border-box;
+    -webkit-text-stroke: 0;
+    overflow-y: auto;
+    /* A faint warm glow anchored behind the header, fading into the flat
+       panel color - just enough depth that the page doesn't read as one
+       dead flat rectangle, without looking like a loud gradient. */
+    background:
+      radial-gradient(ellipse 900px 420px at 15% -10%, rgba(204, 98, 29, 0.1), transparent 60%),
+      var(--mr-bg);
+    color: var(--mr-text);
+  }
+
+  /* Replaces a flat solid border-top with an actual gradient bar. Absolute
+     positioning (against #settingsPanel's padding box, since that's the
+     nearest positioned ancestor) spans the full panel width regardless of
+     its own padding, without needing to fight that padding with margins. */
+  #settingsPanel::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--mr-orange), var(--mr-orange-light), var(--mr-orange));
+  }
+
+  /* Default mode: the dashboard IS the page - plain full-size content. */
+  body:not(.transparent):not(.compact) #settingsPanel {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Compact mode: toggled on top of the glance view instead. */
+  body.compact #settingsPanel.open {
+    position: fixed;
+    inset: 0;
+    background: var(--mr-bg);
+    padding: 50px 20px 20px;
+  }
+
+  #settingsPanel h1 {
+    margin: 0 0 4px;
+    font-size: 2em;
+    font-family: "Fredoka", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--mr-orange);
+    text-shadow: 0 2px 16px rgba(204, 98, 29, 0.35);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #frogIcon {
+    width: 1em;
+    height: 1em;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+  }
+
+  #currentProfileLine {
+    margin: 0 0 20px;
+    padding-bottom: 20px;
+    opacity: 0.75;
+    font-size: 0.9em;
+    border-bottom: 1px solid var(--mr-border);
+  }
+
+  #currentProfileName {
+    font-weight: 700;
+    opacity: 1;
+    color: var(--mr-orange);
+  }
+
+  #settingsPanel h2 {
+    margin: 0 0 14px;
+    font-size: 1.2em;
+    font-family: "Fredoka", sans-serif;
+    font-weight: 600;
+    color: var(--mr-text);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  /* A small accent tick in front of every section heading - a cheap,
+     consistent way to echo the orange brand color throughout the page
+     without repainting every heading orange (which would fight with the
+     actual emphasis color used elsewhere, like #currentProfileName). Also
+     used on .link-subsection's own h3s so each link's title reads with
+     the same weight as a real section heading, not a faint muted label. */
+  #settingsPanel h2::before,
+  #settingsPanel .link-subsection h3::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 1.1em;
+    border-radius: 2px;
+    background: var(--mr-orange);
+    flex-shrink: 0;
+  }
+
+  #settingsPanel h3 {
+    margin: 0 0 8px;
+    font-size: 0.85em;
+    opacity: 0.8;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--mr-muted);
+  }
+
+  #settingsPanel .link-subsection h3 {
+    font-size: 0.95em;
+    opacity: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--mr-text);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+
+  #settingsPanel section {
+    margin-bottom: 22px;
+    max-width: 640px;
+    padding: 20px 22px;
+    background: var(--mr-card-bg);
+    border: 1px solid var(--mr-border);
+    border-radius: 14px;
+    box-shadow: var(--mr-shadow-sm);
+  }
+
+  #pbGlance,
+  #worldRecordsGlance {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-width: 640px;
+    max-height: 320px;
+    margin-bottom: 14px;
+    padding-right: 4px;
+  }
+
+  #pbGlance.hidden,
+  #pbGlanceFilterRow.hidden,
+  #worldRecordsBody.hidden {
+    display: none;
+  }
+
+  .glance-row .time-input:disabled,
+  .glance-edit-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .glance-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.88em;
+  }
+
+  .glance-row .glance-cat {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .glance-row {
+    border-radius: 8px;
+    padding: 3px 6px;
+    margin: 0 -6px;
+    transition: background-color 0.12s ease;
+  }
+
+  .glance-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .glance-row .time-input {
+    width: 130px;
+    flex-shrink: 0;
+    font-family: inherit;
+    font-size: 0.95em;
+    padding: 5px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--mr-border);
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .glance-row .time-input:focus {
+    outline: none;
+    border-color: var(--mr-orange);
+    box-shadow: var(--mr-focus-ring);
+  }
+
+  .glance-row .glance-rank {
+    width: 100px;
+    flex-shrink: 0;
+    opacity: 0.6;
+    font-size: 0.85em;
+    text-align: right;
+  }
+
+  .glance-edit-btn {
+    flex-shrink: 0;
+    background: var(--mr-orange);
+    color: #fff;
+    border: 1px solid var(--mr-orange);
+    border-radius: 6px;
+    padding: 4px 7px;
+    font-size: 0.9em;
+    line-height: 1;
+    cursor: pointer;
+    font-family: "Roboto", sans-serif;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+
+  .glance-edit-btn:hover {
+    background: var(--mr-orange-hover);
+    border-color: var(--mr-orange-hover);
+    transform: translateY(-1px);
+  }
+
+  .glance-edit-btn:active {
+    transform: translateY(0);
+  }
+
+  .glance-edit-btn.active {
+    background: #4a8f3c;
+    color: #fff;
+    border-color: #4a8f3c;
+  }
+
+  .inline-splits-edit {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 2px 0 6px;
+    padding: 12px;
+    border: 1px solid var(--mr-border);
+    border-radius: 10px;
+    max-width: 640px;
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .inline-splits-edit label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75em;
+    opacity: 0.7;
+    gap: 2px;
+  }
+
+  .inline-splits-edit input {
+    width: 85px;
+    font-size: 0.9em;
+    font-family: inherit;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--mr-border);
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .inline-splits-edit input:focus,
+  .estimate-form-row select:focus,
+  #loadProfileSelect:focus {
+    outline: none;
+    border-color: var(--mr-orange);
+    box-shadow: var(--mr-focus-ring);
+  }
+
+  .estimate-form-row select {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .estimate-form {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 10px 0;
+    padding: 14px;
+    border: 1px solid var(--mr-border);
+    border-radius: 10px;
+    max-width: 420px;
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .estimate-form.open {
+    display: flex;
+  }
+
+  .estimate-form-heading {
+    font-size: 0.85em;
+    opacity: 0.8;
+  }
+
+  .estimate-form-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .estimate-form-label {
+    width: 50px;
+    flex-shrink: 0;
+    font-size: 0.9em;
+    opacity: 0.85;
+  }
+
+  .estimate-form-row select {
+    flex: 1;
+    font-family: "Roboto", sans-serif;
+    font-size: 0.9em;
+    padding: 5px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--mr-border);
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+  }
+
+  .estimate-form-note {
+    font-size: 0.75em;
+    opacity: 0.5;
+    margin-top: -4px;
+  }
+
+  /* A fixed grid instead of a ragged flex-wrap - labels of very different
+     lengths ("PB?" vs "Date Accomplished?") used to wrap unpredictably
+     from row to row, which is a big part of what made this area feel like
+     a messy wall of checkboxes. Two even columns keep it a clean,
+     scannable block regardless of label length. */
+  .link-opts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+    margin: 10px 0 2px;
+    font-size: 0.85em;
+  }
+
+  .link-opts label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--mr-muted);
+    transition: color 0.12s ease;
+  }
+
+  .link-opts label:hover {
+    color: var(--mr-text);
+  }
+
+  .obs-preview-wrap {
+    margin: 4px 0 14px;
+  }
+
+  /* The stage is drawn at the background image's own native pixel size
+     (so the corner text uses the exact same clamp(16px, 2.6vmin, 48px)
+     math the real overlay uses, evaluated against that resolution) then
+     scaled down with a CSS transform to fit the preview box - this keeps
+     the text-to-background proportions accurate instead of guessing. */
+  .obs-preview {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #000;
+    box-shadow: var(--mr-shadow-md);
+  }
+
+  .obs-preview img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .obs-preview-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+    pointer-events: none;
+  }
+
+  .preview-corner {
+    position: absolute;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: #fff;
+  }
+
+  .preview-corner.bottom-left {
+    left: 20px;
+    align-items: flex-start;
+  }
+
+  .preview-corner.bottom-right {
+    right: 20px;
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .obs-preview-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    font-size: 0.85em;
+    opacity: 0.85;
+    max-width: 640px;
+  }
+
+  .obs-preview-controls input[type="range"] {
+    flex: 1;
+  }
+
+  .link-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  /* Each link (Browser Source, Compact View) gets its own clearly
+     bounded sub-card instead of two headings and their controls just
+     running together in one undifferentiated column - this is what makes
+     "which checkboxes go with which link" obvious at a glance. */
+  .link-subsection {
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--mr-border);
+    border-radius: 10px;
+  }
+
+  .link-subsection:last-child {
+    margin-bottom: 0;
+  }
+
+  .link-subsection h3 {
+    margin-top: 0 !important;
+  }
+
+  .link-subsection .link-row:last-child,
+  .link-subsection .status-line:last-child,
+  .link-subsection .link-opts:last-child {
+    margin-bottom: 0;
+  }
+
+  /* The MossRanking username field is the one plain editable text input on
+     the page (everything else is readonly link output or a select) - it
+     had no styling of its own before, so it rendered as a stock white
+     browser input, clashing hard with the dark theme around it. */
+  #mossProfileInput {
+    flex: 1;
+    min-width: 0;
+    font-family: "Roboto", sans-serif;
+    font-size: 0.95em;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--mr-border);
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  #mossProfileInput::placeholder {
+    color: var(--mr-muted);
+  }
+
+  #mossProfileInput:focus {
+    outline: none;
+    border-color: var(--mr-orange);
+    box-shadow: var(--mr-focus-ring);
+  }
+
+  .link-row input[readonly] {
+    flex: 1;
+    min-width: 0;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 0.85em;
+    opacity: 0.85;
+    cursor: text;
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+    border: 1px solid var(--mr-border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .link-row input[readonly]:focus {
+    outline: none;
+    border-color: var(--mr-orange);
+    box-shadow: var(--mr-focus-ring);
+  }
+
+  .link-row .copy-btn {
+    flex-shrink: 0;
+  }
+
+  .copy-btn {
+    background: linear-gradient(180deg, var(--mr-orange-light), var(--mr-orange));
+    color: #fff;
+    border: 1px solid var(--mr-orange);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: "Roboto", sans-serif;
+    font-size: inherit;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: var(--mr-shadow-sm);
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+      transform 0.1s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  }
+
+  .copy-btn:hover {
+    background: linear-gradient(180deg, var(--mr-orange), var(--mr-orange-hover));
+    border-color: var(--mr-orange-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  }
+
+  .copy-btn:active {
+    transform: translateY(0);
+  }
+
+  .copy-btn.copied {
+    background: #4a8f3c;
+    border-color: #4a8f3c;
+  }
+
+  .copy-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .copy-btn:disabled:hover {
+    background: linear-gradient(180deg, var(--mr-orange-light), var(--mr-orange));
+    border-color: var(--mr-orange);
+  }
+
+  /* A small icon-only variant of .copy-btn - fixed square instead of
+     text padding, with the icon itself sized and centered inside. */
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+  }
+
+  .icon-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Spins the icon while a refresh is in flight - .icon-btn is only ever
+     disabled for that reason, so no extra state class is needed. */
+  .icon-btn:disabled svg {
+    animation: icon-btn-spin 0.8s linear infinite;
+  }
+
+  @keyframes icon-btn-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  #loadProfileSelect {
+    font-family: "Roboto", sans-serif;
+    font-size: 0.95em;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--mr-border);
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+    max-width: 320px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .status-line {
+    font-size: 0.85em;
+    opacity: 0.8;
+    min-height: 1.2em;
+    margin: 6px 0;
+    color: var(--mr-muted);
+  }
+
+  .how-to-note {
+    margin: 0 0 12px;
+    font-size: 0.9em;
+    color: var(--mr-muted);
+    font-style: italic;
+  }
+
+  .how-to-steps {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+    counter-reset: how-to-step;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .how-to-steps li {
+    counter-increment: how-to-step;
+    display: flex;
+    gap: 10px;
+    line-height: 1.4;
+  }
+
+  .how-to-steps li::before {
+    content: counter(how-to-step);
+    flex-shrink: 0;
+    width: 1.4em;
+    height: 1.4em;
+    border-radius: 50%;
+    background: var(--mr-orange);
+    color: #fff;
+    font-size: 0.8em;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Native checkboxes/range default to the platform's blue accent, which
+     clashes with the orange theme everywhere else on the page. */
+  #settingsPanel input[type="checkbox"],
+  #settingsPanel input[type="range"] {
+    accent-color: var(--mr-orange);
+  }
+
+  /* A themed scrollbar for the panel and the PB list - the browser's
+     default light-grey scrollbar is one of the more obvious "nobody
+     touched this" tells on a dark page. Firefox + Chromium syntaxes both
+     included since each ignores what it doesn't understand. */
+  #settingsPanel,
+  #pbGlance,
+  #worldRecordsGlance {
+    scrollbar-width: thin;
+    scrollbar-color: var(--mr-border) transparent;
+  }
+
+  #settingsPanel::-webkit-scrollbar,
+  #pbGlance::-webkit-scrollbar,
+  #worldRecordsGlance::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  #settingsPanel::-webkit-scrollbar-track,
+  #pbGlance::-webkit-scrollbar-track,
+  #worldRecordsGlance::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  #settingsPanel::-webkit-scrollbar-thumb,
+  #pbGlance::-webkit-scrollbar-thumb,
+  #worldRecordsGlance::-webkit-scrollbar-thumb {
+    background: var(--mr-border);
+    border-radius: 6px;
+  }
+
+  #settingsPanel::-webkit-scrollbar-thumb:hover,
+  #pbGlance::-webkit-scrollbar-thumb:hover,
+  #worldRecordsGlance::-webkit-scrollbar-thumb:hover {
+    background: var(--mr-muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="corner bottom-left text-stroke">
+  <div class="splits-block" id="splitsBlock">
+    <div class="splits-grid" id="splitsGrid">
+      <div class="split-row split-header-row" id="splitsHeaderRow">
+        <span class="split-name"></span>
+        <span class="split-time" id="pbColLabel">PB</span>
+        <span class="split-time wr-time" id="wrColLabel">WR</span>
+      </div>
+      <div class="splits-list" id="splitsList"></div>
+    </div>
+  </div>
+  <div class="category pending" id="categoryLine">
+    <span id="categoryText">Connecting...</span>
+  </div>
+</div>
+
+<div class="corner bottom-right text-stroke">
+  <div class="pb unset" id="pbText"></div>
+  <div class="wr-attribution" id="wrAttribution"></div>
+  <div class="rank" id="rankText"></div>
+  <div class="date-accomplished" id="dateText"></div>
+</div>
+
+<a href="/" id="compactFrogLink" title="Back to dashboard">
+  <img src="frog.ico" alt="Back to dashboard" id="compactFrogIcon">
+</a>
+
+<button id="settingsToggle">PBs</button>
+
+<div id="settingsPanel">
+  <h1><img src="frog.ico" alt="" id="frogIcon">PB Tracker</h1>
+  <div id="currentProfileLine">Current Profile: <span id="currentProfileName">None</span></div>
+
+  <section id="syncSection">
+    <h2>MossRanking Sync</h2>
+    <div class="link-row">
+      <input type="text" id="mossProfileInput" placeholder="MossRanking username, user ID, or profile link">
+      <button id="syncBtn" class="copy-btn">Sync PBs</button>
+      <button id="saveProfileBtn" class="copy-btn" disabled>Save Player Profile</button>
+    </div>
+    <div class="link-row">
+      <select id="loadProfileSelect">
+        <option value="">Load Profile</option>
+      </select>
+    </div>
+    <div id="syncStatus" class="status-line"></div>
+  </section>
+
+  <section id="howToSection">
+    <h2>How to Use</h2>
+    <p class="how-to-note">Make sure HD Toolbox Category Tracker and Spelunky are running.</p>
+    <ol class="how-to-steps">
+      <li>Sync your MossRanking Profile.</li>
+      <li>Save your Player Profile.</li>
+      <li>Under "Personal Bests", you can either manually enter your splits or estimate them.</li>
+      <li>Copy and paste the Browser Source Link into OBS, and set the Width to 1920 and Height to 1080.</li>
+    </ol>
+  </section>
+
+  <section id="linksSection">
+    <h2>OBS Live Preview</h2>
+
+    <div class="obs-preview-wrap">
+      <div class="obs-preview" id="obsPreview">
+        <img id="obsPreviewImg" src="preview_bg.webp" alt="">
+        <div class="obs-preview-stage" id="obsPreviewStage">
+          <div class="preview-corner bottom-left text-stroke">
+            <div class="splits-block" id="previewSplitsBlock">
+              <div class="splits-grid" id="previewSplitsGrid">
+                <div class="split-row split-header-row" id="previewSplitsHeaderRow">
+                  <span class="split-name"></span>
+                  <span class="split-time" id="previewPbColLabel">PB</span>
+                  <span class="split-time wr-time" id="previewWrColLabel">WR</span>
+                </div>
+                <div class="splits-list" id="previewSplitsList"></div>
+              </div>
+            </div>
+            <div class="category pending" id="previewCategoryLine">
+              <span id="previewCategoryText">Waiting for game...</span>
+            </div>
+          </div>
+          <div class="preview-corner bottom-right text-stroke">
+            <div class="pb unset" id="previewPbText"></div>
+            <div class="wr-attribution" id="previewWrAttribution"></div>
+            <div class="rank" id="previewRankText"></div>
+            <div class="date-accomplished" id="previewDateText"></div>
+          </div>
+        </div>
+      </div>
+      <div class="status-line">Make sure the game is running in order to see an accurate preview.</div>
+      <div class="link-opts">
+        <label><input type="checkbox" id="obsSplitsCheck"> PB Splits?</label>
+        <label><input type="checkbox" id="obsWrSplitsCheck"> WR Splits? (est)</label>
+        <label><input type="checkbox" id="obsCategoryCheck"> Category?</label>
+        <label><input type="checkbox" id="obsPbCheck"> PB?</label>
+        <label><input type="checkbox" id="obsRankCheck"> Rank?</label>
+        <label><input type="checkbox" id="obsRatingCheck"> Rating?</label>
+        <label><input type="checkbox" id="obsDateCheck"> Date Accomplished?</label>
+      </div>
+      <div class="obs-preview-controls">
+        <label for="obsTextOpacityInput">Text opacity</label>
+        <input type="range" id="obsTextOpacityInput" min="0" max="100" value="100">
+      </div>
+    </div>
+
+    <div class="link-subsection">
+      <h3>Browser Source Link</h3>
+      <div class="link-row">
+        <input type="text" id="obsLinkInput" readonly>
+        <button id="copyObsLinkBtn" class="copy-btn">Copy</button>
+      </div>
+      <div class="status-line">Width: 1920, Height: 1080</div>
+    </div>
+
+    <div class="link-subsection">
+      <h3>Personal Use Only Link</h3>
+      <div class="link-row">
+        <input type="text" id="compactLinkInput" readonly>
+        <button id="copyCompactLinkBtn" class="copy-btn">Copy</button>
+        <button id="openCompactLinkBtn" class="copy-btn">Open in New Tab</button>
+      </div>
+      <div class="link-opts">
+        <label><input type="checkbox" id="compactSplitsCheck"> PB Splits?</label>
+        <label><input type="checkbox" id="compactWrSplitsCheck"> WR Splits? (est)</label>
+        <label><input type="checkbox" id="compactCategoryCheck"> Category?</label>
+        <label><input type="checkbox" id="compactPbCheck"> PB?</label>
+        <label><input type="checkbox" id="compactRankCheck"> Rank?</label>
+        <label><input type="checkbox" id="compactRatingCheck"> Rating?</label>
+        <label><input type="checkbox" id="compactDateCheck"> Date Accomplished?</label>
+      </div>
+    </div>
+  </section>
+
+  <section id="pbSection">
+    <h2>Personal Bests</h2>
+    <div id="pbActions" class="link-row">
+      <button id="togglePbGlanceBtn" class="copy-btn">Show PBs</button>
+      <button id="estimateSplitsBtn" class="copy-btn">Estimate PB Splits?</button>
+    </div>
+
+    <div id="estimateSplitsForm" class="estimate-form">
+      <div class="estimate-form-heading">Which Olmec fight should we assume from your PBs?</div>
+      <div class="estimate-form-row">
+        <span class="estimate-form-label">Low%</span>
+        <select id="lowPctOlmecSelect">
+          <option value="" selected>Choose...</option>
+          <option value="23">Stomp Cook (23s)</option>
+          <option value="25">Hypermodern (25s)</option>
+          <option value="28">Half Modern (28s)</option>
+          <option value="30">OG 4 Bomb (30s)</option>
+          <option value="35">&lt;4 Bombs (35s)</option>
+          <option value="40">Slowmec (40s)</option>
+        </select>
+      </div>
+      <div class="estimate-form-note">including Low%, Max Low%, No Gold Low%, etc</div>
+      <div class="estimate-form-row">
+        <span class="estimate-form-label">Any%</span>
+        <select id="anyPctOlmecSelect">
+          <option value="" selected>Choose...</option>
+          <option value="20">Optimal Teleporter Fight (20s)</option>
+          <option value="23">Stomp Cook (23s)</option>
+          <option value="25">Hypermodern (25s)</option>
+          <option value="28">Half Modern (28s)</option>
+          <option value="30">OG 4 Bomb (30s)</option>
+          <option value="35">&lt;4 Bombs (35s)</option>
+          <option value="40">Slowmec (40s)</option>
+        </select>
+      </div>
+      <div class="estimate-form-note">including Any%, Max Any%, No Gold%, etc</div>
+      <div class="estimate-form-row">
+        <button id="confirmEstimateBtn" class="copy-btn" disabled>Estimate</button>
+        <span class="estimate-form-note">Currently for Main Speed categories only</span>
+      </div>
+    </div>
+    <div id="estimateStatus" class="status-line"></div>
+
+    <div id="pbGlanceFilterRow" class="link-opts hidden">
+      <label><input type="checkbox" id="mainSpeedOnlyCheck"> Main Speed categories only</label>
+    </div>
+    <div id="pbGlance" class="hidden"></div>
+  </section>
+
+  <section id="worldRecordsSection">
+    <h2>World Records</h2>
+    <div class="link-row">
+      <button id="toggleWorldRecordsBtn" class="copy-btn">Show World Records</button>
+      <button id="refreshWorldRecordsBtn" class="copy-btn icon-btn" title="Refresh World Records" aria-label="Refresh World Records">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+      </button>
+    </div>
+    <div id="worldRecordsRefreshStatus" class="status-line"></div>
+    <div id="worldRecordsBody" class="hidden">
+      <div class="status-line">These are already estimated, but you can tweak them as you wish!</div>
+      <div id="worldRecordsFilterRow" class="link-opts">
+        <label><input type="checkbox" id="wrMainSpeedOnlyCheck"> Main Speed categories only</label>
+      </div>
+      <div id="worldRecordsGlance"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const urlParams = new URLSearchParams(location.search);
+  if (urlParams.has("transparent")) {
+    document.body.classList.add("transparent");
+  }
+  if (urlParams.has("compact")) {
+    document.body.classList.add("compact");
+  }
+  // "splits" defaults on (so links copied before this option existed keep
+  // behaving the same); "wrsplits" defaults off (it's a new opt-in).
+  const showPbSplits = urlParams.get("splits") !== "0";
+  const showWrSplits = urlParams.get("wrsplits") === "1";
+  // category/pb/rank/rating/date all default on, same reasoning as splits -
+  // a link copied before these toggles existed should keep showing
+  // everything it always did.
+  const showCategory = urlParams.get("category") !== "0";
+  const showPb = urlParams.get("pb") !== "0";
+  const showRank = urlParams.get("rank") !== "0";
+  const showRating = urlParams.get("rating") !== "0";
+  const showDate = urlParams.get("date") !== "0";
+  // "textopacity" (0-100) is a real, static setting baked into the copied
+  // link - not just a dashboard preview knob - so it applies here too,
+  // once, at load.
+  if (urlParams.has("textopacity")) {
+    const pct = Math.max(0, Math.min(100, parseInt(urlParams.get("textopacity"), 10) || 0));
+    document.querySelectorAll(".corner").forEach((el) => {
+      el.style.opacity = pct / 100;
+    });
+  }
+
+  const STORAGE_KEY = "pbTracker.pbs";
+  const PROFILE_STORAGE_KEY = "pbTracker.mossProfile";
+  const SYNCED_USERNAME_KEY = "pbTracker.syncedUsername";
+  let syncedUsername = localStorage.getItem(SYNCED_USERNAME_KEY) || null;
+
+  // Eggplant categories route through Hell too (delivering the eggplant
+  // means reaching Yama), so they're treated as hell categories the same
+  // as anything with "Hell" literally in its name. Big Money ends in Hell
+  // but has neither word in its name, so it's called out explicitly.
+  const EXTRA_HELL_CATEGORIES = new Set(["Big Money"]);
+  function isHellCategory(category) {
+    return /hell|eggplant/i.test(category) || EXTRA_HELL_CATEGORIES.has(category);
+  }
+  // Categories with a separate Yama split on top of Hell (5-3).
+  const SEPARATE_YAMA_CATEGORIES = new Set(["Chain Low% Hell", "Big Money"]);
+
+  // Every real split name across every category type - used only to
+  // recognize a corrupted record (see loadPBs below), not to pick which
+  // splits apply to a given category (that's splitKeysFor's job).
+  const ALL_SPLIT_KEY_NAMES = new Set([
+    "Mines", "Jungle", "Ice Caves", "City of Gold", "Temple (4-3)", "Olmec",
+    "Hell Entry", "Hell (5-3)", "Yama", "Worm", "Mothership",
+  ]);
+
+  function loadPBs() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      // Migrate old format (plain time strings) to {time, rank, rating, synced}.
+      // These all came from an earlier auto-sync, so mark them synced: true
+      // so this one-time migration also lets them pick up rank/rating.
+      for (const name of Object.keys(parsed)) {
+        if (typeof parsed[name] === "string") {
+          parsed[name] = { time: parsed[name], synced: true };
+        }
+        // Repair a corrupted record from an earlier bad profile-load: the
+        // category's value is a bare splits object (area names as its own
+        // top-level keys, e.g. {"Mines": "0:26", "Jungle": "0:41", ...))
+        // instead of a real {time, rank, ..., splits} record. There's no
+        // PB time to recover from this shape - it was never in it - but
+        // the split values themselves are real and worth keeping, so nest
+        // them under .splits instead of leaving them scattered where
+        // nothing reads them as splits.
+        if (
+          parsed[name] && typeof parsed[name] === "object" &&
+          !parsed[name].time && !parsed[name].splits &&
+          Object.keys(parsed[name]).length > 0 &&
+          Object.keys(parsed[name]).every((k) => ALL_SPLIT_KEY_NAMES.has(k))
+        ) {
+          // synced: true so the next sync is allowed to fill .time back
+          // in - without it, mergeMossRankingData treats a record with
+          // no .synced flag as a protected hand-edit and never touches
+          // it, leaving it permanently blank instead of recoverable.
+          parsed[name] = { splits: { ...parsed[name] }, synced: true };
+        }
+        // Rename old split labels to their current names.
+        // "Chain Low% Hell" keeps a separate "Yama" field alongside
+        // "Hell (5-3)", so it's excluded from the Yama -> Hell (5-3) rename.
+        const splits = parsed[name].splits;
+        const SPLIT_RENAMES = {
+          "Temple (Olmec)": "Olmec",
+          "Hell (Yama)": "Hell (5-3)",
+          ...(SEPARATE_YAMA_CATEGORIES.has(name) ? {} : { "Yama": "Hell (5-3)" }),
+        };
+        if (splits && Object.keys(SPLIT_RENAMES).some((old) => old in splits)) {
+          const renamed = { ...splits };
+          for (const [oldKey, newKey] of Object.entries(SPLIT_RENAMES)) {
+            if (oldKey in renamed) {
+              renamed[newKey] = renamed[oldKey];
+              delete renamed[oldKey];
+            }
+          }
+          parsed[name] = { ...parsed[name], splits: renamed };
+        }
+        // Format bare-seconds Mines/Jungle splits ("38", "48s") as "0:38"
+        // to match every other split's M:SS style.
+        const currentSplits = parsed[name].splits;
+        if (currentSplits) {
+          let reformatted = null;
+          for (const key of ["Mines", "Jungle"]) {
+            const val = currentSplits[key];
+            if (typeof val !== "string") continue;
+            const m = val.match(/^(\d+)s?$/);
+            if (!m) continue;
+            const secs = parseInt(m[1], 10);
+            if (secs >= 60) continue;
+            reformatted = reformatted || { ...currentSplits };
+            reformatted[key] = `0:${String(secs).padStart(2, "0")}`;
+          }
+          if (reformatted) {
+            parsed[name] = { ...parsed[name], splits: reformatted };
+          }
+        }
+      }
+      return parsed;
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function savePBs(pbs) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pbs));
+    // Also push to the server so every OTHER connected client - most
+    // importantly, an OBS browser source, which is its own separate
+    // browser with its own separate localStorage from wherever this save
+    // happened - picks up the change live instead of only the next time
+    // it happens to reload. See the "PBsUpdated" handler in ws.onmessage
+    // and the matching server-side broadcast in server.py.
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "SavePBs", data: pbs }));
+    }
+  }
+
+  let pbs = loadPBs();
+  let currentCategory = null;
+
+  // Per-category overrides for the WR Splits (est) estimate - included in
+  // Save/Load Profile like pbs is, and (same reasoning as savePBs below)
+  // also pushed to the server so it applies universally instead of only
+  // to whichever browser typed it in - an OBS browser source has its own
+  // separate localStorage and would otherwise never see a hand-tweaked
+  // WR split. A category with no entry here just falls back to the live
+  // computeTargetSplits estimate - see the merge in paintCorners and
+  // buildWrSplitsEditPanel. An override also feeds BACK into that same
+  // estimate for the category's OTHER, still-untouched splits (see
+  // buildPreOlmecAnchors) - correcting one split rescales the rest around
+  // it instead of leaving them at the pre-correction guess.
+  const WR_SPLITS_STORAGE_KEY = "pbTracker.wrSplitOverrides";
+  function loadWrSplits() {
+    try {
+      const raw = localStorage.getItem(WR_SPLITS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function saveWrSplits(wrSplits) {
+    localStorage.setItem(WR_SPLITS_STORAGE_KEY, JSON.stringify(wrSplits));
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "SaveWrSplits", data: wrSplits }));
+    }
+  }
+  let wrSplits = loadWrSplits();
+
+  // The HD Toolbox category tracker sometimes misreports a category - e.g.
+  // it occasionally shows "No Gold Any" / "No Gold Any%", which isn't a
+  // real category (that's a tracker bug, not a category anyone runs). When
+  // that happens, pull PB/rank/splits from the real category instead of
+  // coming up empty. The live category text itself is left alone - this
+  // only affects which data gets looked up.
+  const CATEGORY_DATA_ALIASES = {
+    "no gold any": "No Gold",
+    "no gold any%": "No Gold",
+  };
+
+  function resolveCategoryForData(category) {
+    return CATEGORY_DATA_ALIASES[category.toLowerCase()] || category;
+  }
+
+  // Olmec is stored as a duration ("33s") while Temple (4-3) is a cumulative
+  // time ("2:21") - adding them gives the exact cumulative moment of
+  // stepping into World 5, so Hell Entry never needs to be typed by hand.
+  function parseTimeValue(str) {
+    if (!str) return null;
+    str = str.trim();
+    let m = str.match(/^(\d+):(\d{1,2})(?:\.(\d+))?$/);
+    if (m) {
+      const frac = m[3] ? parseFloat("0." + m[3]) : 0;
+      return parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + frac;
+    }
+    m = str.match(/^(\d+(?:\.\d+)?)s$/);
+    if (m) return parseFloat(m[1]);
+    return null;
+  }
+
+  function formatSecondsAsTime(totalSeconds) {
+    const rounded = Math.round(totalSeconds);
+    const mins = Math.floor(rounded / 60);
+    const secs = rounded % 60;
+    return `${mins}:${String(secs).padStart(2, "0")}`;
+  }
+
+  // MossRanking's own date column (and so pb.date) is "YYYY-MM-DD" -
+  // displayed as "MM/DD/YYYY" instead. Anything not in that exact shape is
+  // left alone rather than mangled.
+  function formatDate(dateStr) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    if (!m) return dateStr;
+    const [, year, month, day] = m;
+    return `${month}/${day}/${year}`;
+  }
+
+  function computeHellEntry(splits) {
+    const temple = parseTimeValue(splits["Temple (4-3)"]);
+    const olmec = parseTimeValue(splits["Olmec"]);
+    if (temple == null || olmec == null) return null;
+    return formatSecondsAsTime(temple + olmec);
+  }
+
+  function splitValue(pb, key) {
+    if (key === "Hell Entry") {
+      // Still derived live by default - a hand-typed override (see
+      // buildSplitsEditPanel) wins when one's actually been set.
+      return (pb.splits || {})["Hell Entry"] || computeHellEntry(pb.splits || {});
+    }
+    return (pb.splits || {})[key];
+  }
+
+  function splitKeysFor(category) {
+    const keys = ["Mines", "Jungle", "Ice Caves"];
+    // "Big Money" additionally routes through City of Gold, reached from Ice Caves.
+    if (category === "Big Money") keys.push("City of Gold");
+    // Every category passes through Temple (4-3) just before Olmec.
+    keys.push("Temple (4-3)");
+    // "Max" categories additionally track the Worm and Mothership
+    // encounters - Olmec is listed last for these specifically (everyone
+    // else keeps Olmec right after Temple (4-3), its normal run order).
+    const isMax = /max/i.test(category);
+    if (!isMax) keys.push("Olmec");
+    // Hell categories (anything with "hell", "eggplant", or "chain" in the
+    // name) continue past Olmec into Hell itself - Hell Entry marks first
+    // stepping into World 5, then Hell (5-3) is the Yama fight further in.
+    if (isHellCategory(category)) keys.push("Hell Entry", "Hell (5-3)");
+    if (SEPARATE_YAMA_CATEGORIES.has(category)) keys.push("Yama");
+    if (isMax) keys.push("Worm", "Mothership", "Olmec");
+    return keys;
+  }
+
+  // These splits are each one individual level's own time, not a
+  // cumulative run time like Mines/Jungle/Ice Caves/Temple (4-3)/Hell
+  // (5-3) - "IL" (speedrunning shorthand for Individual Level) next to the
+  // name makes that distinction visible wherever a split's label is shown.
+  const IL_SPLIT_KEYS = new Set(["Olmec", "Worm", "Mothership", "Yama", "City of Gold"]);
+  function splitLabel(key) {
+    return IL_SPLIT_KEYS.has(key) ? `${key} IL` : key;
+  }
+
+  const categoryText = document.getElementById("categoryText");
+  const categoryLine = document.getElementById("categoryLine");
+  const pbText = document.getElementById("pbText");
+  const rankText = document.getElementById("rankText");
+  const dateText = document.getElementById("dateText");
+  const splitsBlock = document.getElementById("splitsBlock");
+  const splitsGrid = document.getElementById("splitsGrid");
+  const splitsHeaderRow = document.getElementById("splitsHeaderRow");
+  const pbColLabel = document.getElementById("pbColLabel");
+  const wrColLabel = document.getElementById("wrColLabel");
+  const wrAttribution = document.getElementById("wrAttribution");
+  const splitsList = document.getElementById("splitsList");
+  const previewCategoryText = document.getElementById("previewCategoryText");
+  const previewCategoryLine = document.getElementById("previewCategoryLine");
+  const previewPbText = document.getElementById("previewPbText");
+  const previewRankText = document.getElementById("previewRankText");
+  const previewDateText = document.getElementById("previewDateText");
+  const previewSplitsBlock = document.getElementById("previewSplitsBlock");
+  const previewSplitsGrid = document.getElementById("previewSplitsGrid");
+  const previewSplitsHeaderRow = document.getElementById("previewSplitsHeaderRow");
+  const previewPbColLabel = document.getElementById("previewPbColLabel");
+  const previewWrColLabel = document.getElementById("previewWrColLabel");
+  const previewWrAttribution = document.getElementById("previewWrAttribution");
+  const previewSplitsList = document.getElementById("previewSplitsList");
+  const obsPreview = document.getElementById("obsPreview");
+  const obsPreviewImg = document.getElementById("obsPreviewImg");
+  const obsPreviewStage = document.getElementById("obsPreviewStage");
+  const obsTextOpacityInput = document.getElementById("obsTextOpacityInput");
+  const settingsToggle = document.getElementById("settingsToggle");
+  const settingsPanel = document.getElementById("settingsPanel");
+  const currentProfileName = document.getElementById("currentProfileName");
+  function updateCurrentProfileDisplay() {
+    currentProfileName.textContent = syncedUsername || "None";
+  }
+  updateCurrentProfileDisplay();
+  const pbGlance = document.getElementById("pbGlance");
+  const pbGlanceFilterRow = document.getElementById("pbGlanceFilterRow");
+  const mainSpeedOnlyCheck = document.getElementById("mainSpeedOnlyCheck");
+  const MAIN_SPEED_ONLY_KEY = "pbTracker.mainSpeedOnly";
+  mainSpeedOnlyCheck.checked = localStorage.getItem(MAIN_SPEED_ONLY_KEY) === "1";
+  const togglePbGlanceBtn = document.getElementById("togglePbGlanceBtn");
+  const toggleWorldRecordsBtn = document.getElementById("toggleWorldRecordsBtn");
+  const refreshWorldRecordsBtn = document.getElementById("refreshWorldRecordsBtn");
+  const worldRecordsRefreshStatus = document.getElementById("worldRecordsRefreshStatus");
+  const worldRecordsBody = document.getElementById("worldRecordsBody");
+  const worldRecordsGlance = document.getElementById("worldRecordsGlance");
+  const wrMainSpeedOnlyCheck = document.getElementById("wrMainSpeedOnlyCheck");
+  const WR_MAIN_SPEED_ONLY_KEY = "pbTracker.wrMainSpeedOnly";
+  wrMainSpeedOnlyCheck.checked = localStorage.getItem(WR_MAIN_SPEED_ONLY_KEY) === "1";
+  const estimateSplitsBtn = document.getElementById("estimateSplitsBtn");
+  const estimateSplitsForm = document.getElementById("estimateSplitsForm");
+  const lowPctOlmecSelect = document.getElementById("lowPctOlmecSelect");
+  const anyPctOlmecSelect = document.getElementById("anyPctOlmecSelect");
+  const confirmEstimateBtn = document.getElementById("confirmEstimateBtn");
+  const estimateStatus = document.getElementById("estimateStatus");
+  const syncBtn = document.getElementById("syncBtn");
+  const saveProfileBtn = document.getElementById("saveProfileBtn");
+  const loadProfileSelect = document.getElementById("loadProfileSelect");
+  const syncStatus = document.getElementById("syncStatus");
+  const mossProfileInput = document.getElementById("mossProfileInput");
+
+  mossProfileInput.value = localStorage.getItem(PROFILE_STORAGE_KEY) || "";
+  mossProfileInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") syncBtn.click();
+  });
+
+  const obsLinkInput = document.getElementById("obsLinkInput");
+  const compactLinkInput = document.getElementById("compactLinkInput");
+  const copyObsLinkBtn = document.getElementById("copyObsLinkBtn");
+  const copyCompactLinkBtn = document.getElementById("copyCompactLinkBtn");
+  const obsSplitsCheck = document.getElementById("obsSplitsCheck");
+  const obsWrSplitsCheck = document.getElementById("obsWrSplitsCheck");
+  const obsCategoryCheck = document.getElementById("obsCategoryCheck");
+  const obsPbCheck = document.getElementById("obsPbCheck");
+  const obsRankCheck = document.getElementById("obsRankCheck");
+  const obsRatingCheck = document.getElementById("obsRatingCheck");
+  const obsDateCheck = document.getElementById("obsDateCheck");
+  const compactSplitsCheck = document.getElementById("compactSplitsCheck");
+  const compactWrSplitsCheck = document.getElementById("compactWrSplitsCheck");
+  const compactCategoryCheck = document.getElementById("compactCategoryCheck");
+  const compactPbCheck = document.getElementById("compactPbCheck");
+  const compactRankCheck = document.getElementById("compactRankCheck");
+  const compactRatingCheck = document.getElementById("compactRatingCheck");
+  const compactDateCheck = document.getElementById("compactDateCheck");
+
+  const LINK_OPTS_KEY = "pbTracker.linkOpts";
+  function loadLinkOpts() {
+    try {
+      return JSON.parse(localStorage.getItem(LINK_OPTS_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  const linkOpts = loadLinkOpts();
+  // OBS Preview defaults to just Category + PB at full opacity - a minimal
+  // stream overlay out of the box. Compact View defaults to everything on,
+  // since that's your own glance view, not something shown to viewers.
+  obsSplitsCheck.checked = !!linkOpts.obsSplits;
+  obsWrSplitsCheck.checked = !!linkOpts.obsWrSplits;
+  obsCategoryCheck.checked = linkOpts.obsCategory !== false;
+  obsPbCheck.checked = linkOpts.obsPb !== false;
+  obsRankCheck.checked = !!linkOpts.obsRank;
+  obsRatingCheck.checked = !!linkOpts.obsRating;
+  obsDateCheck.checked = !!linkOpts.obsDate;
+  compactSplitsCheck.checked = linkOpts.compactSplits !== false;
+  compactWrSplitsCheck.checked = linkOpts.compactWrSplits !== false;
+  compactCategoryCheck.checked = linkOpts.compactCategory !== false;
+  compactPbCheck.checked = linkOpts.compactPb !== false;
+  compactRankCheck.checked = linkOpts.compactRank !== false;
+  compactRatingCheck.checked = linkOpts.compactRating !== false;
+  compactDateCheck.checked = linkOpts.compactDate !== false;
+  obsTextOpacityInput.value = linkOpts.obsTextOpacity != null ? linkOpts.obsTextOpacity : 100;
+
+  function refreshLinks() {
+    obsLinkInput.value =
+      `${location.origin}/?transparent&splits=${obsSplitsCheck.checked ? 1 : 0}` +
+      `&wrsplits=${obsWrSplitsCheck.checked ? 1 : 0}` +
+      `&category=${obsCategoryCheck.checked ? 1 : 0}` +
+      `&pb=${obsPbCheck.checked ? 1 : 0}` +
+      `&rank=${obsRankCheck.checked ? 1 : 0}` +
+      `&rating=${obsRatingCheck.checked ? 1 : 0}` +
+      `&date=${obsDateCheck.checked ? 1 : 0}` +
+      `&textopacity=${obsTextOpacityInput.value}`;
+    compactLinkInput.value =
+      `${location.origin}/?compact&splits=${compactSplitsCheck.checked ? 1 : 0}` +
+      `&wrsplits=${compactWrSplitsCheck.checked ? 1 : 0}` +
+      `&category=${compactCategoryCheck.checked ? 1 : 0}` +
+      `&pb=${compactPbCheck.checked ? 1 : 0}` +
+      `&rank=${compactRankCheck.checked ? 1 : 0}` +
+      `&rating=${compactRatingCheck.checked ? 1 : 0}` +
+      `&date=${compactDateCheck.checked ? 1 : 0}`;
+  }
+  refreshLinks();
+
+  function saveLinkOpts() {
+    localStorage.setItem(LINK_OPTS_KEY, JSON.stringify({
+      obsSplits: obsSplitsCheck.checked,
+      obsWrSplits: obsWrSplitsCheck.checked,
+      obsCategory: obsCategoryCheck.checked,
+      obsPb: obsPbCheck.checked,
+      obsRank: obsRankCheck.checked,
+      obsRating: obsRatingCheck.checked,
+      obsDate: obsDateCheck.checked,
+      compactSplits: compactSplitsCheck.checked,
+      compactWrSplits: compactWrSplitsCheck.checked,
+      compactCategory: compactCategoryCheck.checked,
+      compactPb: compactPbCheck.checked,
+      compactRank: compactRankCheck.checked,
+      compactRating: compactRatingCheck.checked,
+      compactDate: compactDateCheck.checked,
+      obsTextOpacity: obsTextOpacityInput.value,
+    }));
+  }
+
+  [
+    obsSplitsCheck, obsWrSplitsCheck, obsCategoryCheck, obsPbCheck,
+    obsRankCheck, obsRatingCheck, obsDateCheck,
+    compactSplitsCheck, compactWrSplitsCheck, compactCategoryCheck, compactPbCheck,
+    compactRankCheck, compactRatingCheck, compactDateCheck,
+  ].forEach((el) => {
+    el.addEventListener("change", () => {
+      saveLinkOpts();
+      refreshLinks();
+      renderPreview();
+    });
+  });
+
+  function wireCopyButton(button, input) {
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(input.value);
+      } catch (e) {
+        // Clipboard API can be unavailable in some contexts - fall back to
+        // a manual select so the user can still copy with Ctrl+C.
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+      }
+      const original = button.textContent;
+      button.textContent = "Copied!";
+      button.classList.add("copied");
+      setTimeout(() => {
+        button.textContent = original;
+        button.classList.remove("copied");
+      }, 1500);
+    });
+  }
+  wireCopyButton(copyObsLinkBtn, obsLinkInput);
+  wireCopyButton(copyCompactLinkBtn, compactLinkInput);
+
+  const openCompactLinkBtn = document.getElementById("openCompactLinkBtn");
+  openCompactLinkBtn.addEventListener("click", () => {
+    window.open(compactLinkInput.value, "_blank");
+  });
+
+  function mergeMossRankingData(incoming) {
+    let added = 0;
+    let refreshed = 0;
+    let removed = 0;
+    const incomingNames = new Set(Object.keys(incoming));
+    for (const [name, data] of Object.entries(incoming)) {
+      const entry = typeof data === "string" ? { time: data } : data;
+      if (!(name in pbs)) {
+        pbs[name] = { ...entry, synced: true };
+        added++;
+      } else if (pbs[name].synced) {
+        // Splits are entered by hand and never come from MossRanking -
+        // keep them across a refresh instead of dropping them.
+        const splits = pbs[name].splits;
+        pbs[name] = { ...entry, synced: true, ...(splits ? { splits } : {}) };
+        refreshed++;
+      }
+      // else: user hand-edited this entry, leave it alone
+    }
+    // Drop any synced category this sync's own data no longer claims - a
+    // category doesn't normally vanish from someone's real MossRanking
+    // history, so this is almost always a leftover from a DIFFERENT
+    // profile synced earlier (e.g. switching from Hectique to Groomp
+    // without ever clearing Hectique's categories out). A hand-edited
+    // (unsynced) entry is left alone either way.
+    for (const name of Object.keys(pbs)) {
+      if (pbs[name].synced && !incomingNames.has(name)) {
+        delete pbs[name];
+        removed++;
+      }
+    }
+    if (added > 0 || refreshed > 0 || removed > 0) savePBs(pbs);
+    renderPBGlance();
+    renderDisplay();
+    return { added, refreshed, removed };
+  }
+
+  let pendingMossSync = null; // { isAutoSync, resolve, requestGeneration }
+
+  // Bumped whenever the active profile changes by any means OTHER than a
+  // sync response actually completing (right now: switching via Load
+  // Profile). A sync is a round trip to the server and back - if the user
+  // loads a different saved profile while one is still in flight, the
+  // response that eventually arrives is for a profile that's no longer
+  // current, and must be discarded instead of merged into whatever's
+  // loaded now. Without this, a slow auto-sync for "Hectique" landing
+  // just after you've switched to "Groomp" would silently splice
+  // Hectique's categories into Groomp's data.
+  let syncGeneration = 0;
+
+  function syncFromMossRanking(isAutoSync) {
+    return new Promise((resolve) => {
+      const profile = (localStorage.getItem(PROFILE_STORAGE_KEY) || "").trim();
+      if (!profile) {
+        if (!isAutoSync) {
+          syncStatus.textContent = "Enter your MossRanking username, user ID, or profile link above first.";
+        }
+        resolve();
+        return;
+      }
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        if (!isAutoSync) syncStatus.textContent = "Not connected - can't sync right now.";
+        resolve();
+        return;
+      }
+      if (!isAutoSync) syncStatus.textContent = "Syncing...";
+      // A fresh request also supersedes any earlier one still in flight.
+      syncGeneration++;
+      pendingMossSync = { isAutoSync, resolve, requestGeneration: syncGeneration };
+      ws.send(JSON.stringify({ type: "SyncMossRanking", profile }));
+    });
+  }
+
+  // Fills in any split that's still missing using REFERENCE_SPLITS (the
+  // bundled reference data that also powers Estimate Splits/WR Splits) as
+  // the source - this used to fetch a separate known_splits.json file,
+  // which worked for the dev server but did nothing in the distributable
+  // exe, where that file is deliberately left empty for friend-privacy.
+  // REFERENCE_SPLITS is already safely bundled either way, so reusing it
+  // here instead means this now actually works in both.
+  function loadKnownSplits() {
+    let changed = false;
+    for (const [name, pb] of Object.entries(pbs)) {
+      const ref = REFERENCE_SPLITS[name];
+      if (!ref || !ref.splits) continue;
+      const existing = pb.splits || {};
+      const merged = { ...existing };
+      for (const [key, value] of Object.entries(ref.splits)) {
+        if (!merged[key]) {
+          merged[key] = value;
+          changed = true;
+        }
+      }
+      pbs[name] = { ...pb, splits: merged };
+    }
+    if (changed) {
+      savePBs(pbs);
+      renderPBGlance();
+      renderDisplay();
+    }
+  }
+
+  // Reference splits (the dev's real times/splits) power both "Estimate
+  // Splits?" (scaled to each PB's own time) and the WR Splits overlay
+  // (scaled to the WR's time) - unrelated to a viewer's own PBs, so this
+  // loads unconditionally at startup rather than after a sync.
+  let REFERENCE_SPLITS = {};
+  // Whose data REFERENCE_SPLITS (and known_splits.json) actually is -
+  // loadKnownSplits only ever auto-fills when the currently synced
+  // profile is this same person, never a different one sharing this
+  // installation (see the loadKnownSplits gating below for why).
+  let REFERENCE_OWNER = null;
+
+  async function loadReferenceSplits() {
+    try {
+      const res = await fetch("reference_splits.json", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      REFERENCE_OWNER = data.__owner__ || null;
+      delete data.__owner__;
+      REFERENCE_SPLITS = data;
+    } catch (e) {
+      // non-fatal - reference_splits.json is optional
+    }
+  }
+
+  // known_splits.json is one specific person's (REFERENCE_OWNER's) real,
+  // hand-tracked splits - it must only ever auto-fill when THAT person is
+  // the one currently synced, never grafted onto a different profile that
+  // happens to share this installation (category names like "Any%" collide
+  // across every player, so without this check it would otherwise silently
+  // stamp one person's real splits onto everyone else's same-named runs).
+  function loadKnownSplitsIfOwner() {
+    if (
+      syncedUsername && REFERENCE_OWNER &&
+      syncedUsername.toLowerCase() === REFERENCE_OWNER.toLowerCase()
+    ) {
+      loadKnownSplits();
+    }
+  }
+
+  // Runs on every load (not just after a sync) so any split that's still
+  // missing gets refilled from the original known_splits.json - this is
+  // also what undoes the damage from a previous bad idea that shipped
+  // here: a "one-time cleanup" that deleted any stored split matching
+  // what the estimate formula produces today, on the assumption a hand-
+  // typed value matching it exactly would be virtually impossible. That
+  // assumption was wrong - reference_splits.json's numbers for a category
+  // ARE this profile's own known_splits.json values, so real hand-typed
+  // splits matched it all the time and got wiped. loadKnownSplits() only
+  // ever fills a key that's empty, so running it here restores exactly
+  // what that cleanup removed without touching anything else.
+  loadReferenceSplits().then(loadKnownSplitsIfOwner);
+
+  // World records (scraped from mossranking.com/spelunky-hd/cats) power the
+  // "WR Splits? (est)" overlay toggle - estimated the same way as the Pace
+  // Calculator, scaling the reference splits to the WR's total time.
+  let WORLD_RECORDS = {};
+
+  // Category names are unique across groups, so a flat {name: {time,
+  // player}} map is all either the initial load or a live refresh needs.
+  function flattenWorldRecordGroups(groups) {
+    const flat = {};
+    for (const entries of Object.values(groups)) {
+      for (const [name, data] of Object.entries(entries)) {
+        flat[name] = data;
+      }
+    }
+    return flat;
+  }
+
+  async function loadWorldRecords() {
+    try {
+      const res = await fetch("world_records.json", { cache: "no-store" });
+      if (!res.ok) return;
+      const groups = await res.json();
+      WORLD_RECORDS = flattenWorldRecordGroups(groups);
+      renderDisplay();
+    } catch (e) {
+      // non-fatal - world_records.json is optional
+    }
+  }
+  loadWorldRecords();
+
+  // Every browser instance that loads this page - your regular browser for
+  // the dashboard, OBS's own separate embedded browser for the overlay,
+  // etc. - has its own independent localStorage, with no way to see what
+  // another one saved. The server's exported_pbs.json (written on every
+  // savePBs() call, see server.py's "SavePBs" handler) is the one thing
+  // all of them can read, so a freshly-loading client adopts it here -
+  // this is what lets a newly-added OBS source pick up splits/PBs you only
+  // ever entered in your dashboard browser, without needing to redo that
+  // entry from inside OBS itself. Only non-empty server data is adopted,
+  // so a brand-new install with nothing saved yet never wipes a client's
+  // own existing local data.
+  async function loadServerPBs() {
+    try {
+      const res = await fetch("exported_pbs.json", { cache: "no-store" });
+      if (!res.ok) return;
+      const serverPbs = await res.json();
+      if (serverPbs && Object.keys(serverPbs).length > 0) {
+        pbs = serverPbs;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(pbs));
+        renderPBGlance();
+        renderDisplay();
+      }
+    } catch (e) {
+      // non-fatal - exported_pbs.json may not exist yet
+    }
+  }
+  loadServerPBs();
+
+  // Same reasoning as loadServerPBs just above, for hand-tweaked WR Splits
+  // overrides instead of PBs - see saveWrSplits' push and server.py's
+  // "SaveWrSplits" handler.
+  async function loadServerWrSplits() {
+    try {
+      const res = await fetch("exported_wr_splits.json", { cache: "no-store" });
+      if (!res.ok) return;
+      const serverWrSplits = await res.json();
+      if (serverWrSplits && Object.keys(serverWrSplits).length > 0) {
+        wrSplits = serverWrSplits;
+        localStorage.setItem(WR_SPLITS_STORAGE_KEY, JSON.stringify(wrSplits));
+        if (!worldRecordsBody.classList.contains("hidden")) renderWorldRecordsGlance();
+        renderDisplay();
+      }
+    } catch (e) {
+      // non-fatal - exported_wr_splits.json may not exist yet
+    }
+  }
+  loadServerWrSplits();
+
+  // Temple (4-3)/Mines/Jungle/Ice Caves/Hell (5-3) are cumulative, so they
+  // scale by straight ratio; Olmec/Worm/Mothership/Yama/City of Gold are
+  // encounter durations, which scale the same way - a faster overall pace
+  // implies a faster (if rougher) encounter too.
+  //
+  // Exception: Olmec is assumed to take a fixed number of seconds rather
+  // than being scaled with the rest of the run - real Olmec kill times
+  // cluster around whatever strat you're using regardless of overall pace,
+  // so scaling it down with everything else badly misrepresents it.
+  // Non-hell/chain/eggplant categories take that fixed Olmec time from
+  // opts.assumedOlmecSeconds (the Estimate Splits form's own dropdowns) or
+  // opts.assumeWrOlmec's fixed 23s (only the WR Splits overlay passes it).
+  // Hell/chain/eggplant categories get a fixed Olmec assumption too, but
+  // always (not just when the caller opts in) since there's no per-category
+  // UI for them: 30s normally, except Chain Low% Hell specifically, whose
+  // own WR also kills Olmec in ~50s, so 50s is both the assumption and a
+  // closer match to how that category is actually played.
+  const ASSUMED_WR_OLMEC_SECONDS = 23;
+  const HELL_OLMEC_SECONDS = 30;
+  const CHAIN_LOW_HELL_OLMEC_SECONDS = 50;
+  // Same idea as the fixed Olmec time, applied to the Yama IL for hell
+  // categories that have one (see SEPARATE_YAMA_CATEGORIES). Chain Low%
+  // Hell and Big Money both keep Yama scaled with everything else instead
+  // - Big Money was reverted back to scaled after trying the fixed
+  // assumption on it specifically, but the fixed-15s mechanism itself is
+  // kept here for whichever future hell category wants it.
+  const HELL_YAMA_SECONDS = 15;
+  const HELL_YAMA_SECONDS_EXCLUDED = new Set(["Chain Low% Hell", "Big Money"]);
+
+  function assumedHellOlmecSeconds(category) {
+    return category === "Chain Low% Hell" ? CHAIN_LOW_HELL_OLMEC_SECONDS : HELL_OLMEC_SECONDS;
+  }
+
+  // Hell/chain/eggplant categories continue past Olmec, so unlike non-hell
+  // categories (where the run ends shortly after Olmec and only the
+  // pre-Olmec splits need rescaling), this cumulative split marks a point
+  // AFTER Olmec and needs its own formula - see the useFixedOlmec branch
+  // below for how it's reconstructed around the fixed Olmec time. (Yama,
+  // despite coming after Hell (5-3), is a fight duration like Olmec/Worm/
+  // Mothership/City of Gold - not cumulative - so it scales with those via
+  // the plain ratio below instead.)
+  const POST_OLMEC_CUMULATIVE_KEYS = new Set(["Hell (5-3)"]);
+
+  // Ordered cumulative-from-start checkpoints between the run's start and
+  // Olmec - the ones a known-accurate split (wrSplits - see below) can
+  // "anchor" via buildPreOlmecAnchors. City of Gold is excluded even
+  // though it falls in that same stretch of the run, since it's a
+  // duration (like Olmec/Worm/Mothership), not a cumulative checkpoint.
+  const PRE_OLMEC_ORDERED_KEYS = ["Mines", "Jungle", "Ice Caves", "Temple (4-3)"];
+
+  // A hand-corrected split (typed into the World Records editor's pencil,
+  // or - since a category's actual Mines/Jungle/etc. breakdown is a
+  // property of the route itself, not of who's running it - just as
+  // useful a calibration for a regular player's own Estimate PB Splits)
+  // is trusted over straight ratio scaling, the same reasoning as the
+  // fixed Olmec time. "No Gold" Mines=27s started as a one-off fix; it's
+  // kept here as a default so it still applies even before anyone has
+  // typed an explicit override for that category - an explicit override
+  // for the same category/key always wins over it.
+  const WR_FIXED_MINES_SECONDS = { "No Gold": 27 };
+
+  // Builds the sorted list of (reference-seconds, target-seconds) anchor
+  // points the pre-Olmec cumulative splits get reconstructed around: the
+  // implicit run start (0, 0), the implicit end (arrival at Olmec), and
+  // any known-accurate split (overrides - see wrSplits) for one of
+  // PRE_OLMEC_ORDERED_KEYS in between. Each one replaces straight ratio
+  // scaling with "exactly this value, and rescale everything else to
+  // still connect smoothly to its neighbors" - the same idea as the old
+  // Mines-only fixed anchor, generalized to whichever split(s) are
+  // actually known. Overriding Temple (4-3) itself coincides with (and so
+  // replaces) the implicit end anchor rather than adding a separate one.
+  function buildPreOlmecAnchors(ref, overrides, category, endTargetSeconds, refPreOlmec) {
+    const anchors = [{ ref: 0, target: 0 }];
+    let endTarget = endTargetSeconds;
+    for (const key of PRE_OLMEC_ORDERED_KEYS) {
+      const overrideStr = overrides && overrides[key];
+      let overrideSecs = overrideStr ? parseTimeValue(overrideStr) : null;
+      if (overrideSecs == null && key === "Mines" && WR_FIXED_MINES_SECONDS[category] != null) {
+        overrideSecs = WR_FIXED_MINES_SECONDS[category];
+      }
+      if (overrideSecs == null) continue;
+      const refSecs = parseTimeValue((ref.splits || {})[key]);
+      if (refSecs == null) continue;
+      if (key === "Temple (4-3)") {
+        endTarget = overrideSecs;
+      } else {
+        anchors.push({ ref: refSecs, target: overrideSecs });
+      }
+    }
+    anchors.push({ ref: refPreOlmec, target: endTarget });
+    anchors.sort((a, b) => a.ref - b.ref);
+    return anchors;
+  }
+
+  // Scales a reference-seconds value by linear interpolation between
+  // whichever pair of anchors surrounds it - with only the implicit
+  // start/end anchors (no known splits in between) this is just the old
+  // straight-ratio behavior; more anchors make it piecewise instead.
+  function interpolateAnchors(anchors, refSecs) {
+    let lo = anchors[0];
+    let hi = anchors[anchors.length - 1];
+    for (let i = 0; i < anchors.length - 1; i++) {
+      if (refSecs >= anchors[i].ref) {
+        lo = anchors[i];
+        hi = anchors[i + 1];
+      }
+    }
+    if (hi.ref === lo.ref) return lo.target;
+    const t = (refSecs - lo.ref) / (hi.ref - lo.ref);
+    return lo.target + t * (hi.target - lo.target);
+  }
+
+  // opts.wrOverrides, when passed, is a category's known-accurate splits
+  // (wrSplits[category]) - used both for the WR Splits estimate itself and
+  // for a regular player's Estimate PB Splits, since a route-level
+  // correction like "No Gold" Mines=27s is just as valid a calibration for
+  // either one.
+  function computeTargetSplits(category, targetTimeStr, opts) {
+    opts = opts || {};
+    const ref = REFERENCE_SPLITS[category];
+    if (!ref) return null;
+    const refTotal = parseTimeValue(ref.time);
+    const targetTotal = parseTimeValue(targetTimeStr);
+    if (refTotal == null || !(refTotal > 0) || targetTotal == null) return null;
+
+    const hell = isHellCategory(category);
+    const overrideOlmecStr = opts.wrOverrides && opts.wrOverrides["Olmec"];
+    const overrideOlmecSeconds = overrideOlmecStr ? parseTimeValue(overrideOlmecStr) : null;
+    const fixedOlmecSeconds =
+      overrideOlmecSeconds != null
+        ? overrideOlmecSeconds
+        : opts.assumedOlmecSeconds != null
+          ? opts.assumedOlmecSeconds
+          : hell
+            ? assumedHellOlmecSeconds(category)
+            : opts.assumeWrOlmec
+              ? ASSUMED_WR_OLMEC_SECONDS
+              : null;
+    const refPreOlmec = parseTimeValue((ref.splits || {})["Temple (4-3)"]);
+    const refOlmecSeconds = parseTimeValue((ref.splits || {})["Olmec"]);
+    const useFixedOlmec =
+      fixedOlmecSeconds != null && refPreOlmec != null && refPreOlmec > 0 &&
+      (!hell || (refOlmecSeconds != null && refOlmecSeconds > 0));
+
+    const ratio = targetTotal / refTotal;
+    // Non-hell: only the pre-Olmec budget needs rescaling (the run ends
+    // shortly after Olmec). Hell: everything other than Olmec itself -
+    // before AND after it - shares one combined ratio instead, since Olmec
+    // is just one fixed-length stop partway through a much longer run.
+    const nonOlmecRatio = useFixedOlmec
+      ? hell
+        ? (targetTotal - fixedOlmecSeconds) / (refTotal - refOlmecSeconds)
+        : (targetTotal - fixedOlmecSeconds) / refPreOlmec
+      : ratio;
+
+    // Hell categories keep the single combined pre+post-Olmec ratio above
+    // for their pre-Olmec splits too - the anchor reconstruction below is
+    // only for the simpler non-hell case (the run ends shortly after Olmec).
+    const preOlmecAnchors = (useFixedOlmec && !hell)
+      ? buildPreOlmecAnchors(ref, opts.wrOverrides, category, targetTotal - fixedOlmecSeconds, refPreOlmec)
+      : null;
+
+    const scaled = {};
+    for (const [key, value] of Object.entries(ref.splits || {})) {
+      const secs = parseTimeValue(value);
+      if (secs == null) continue;
+      let scaledSecs;
+      if (useFixedOlmec && key === "Olmec") {
+        scaledSecs = fixedOlmecSeconds;
+      } else if (preOlmecAnchors && PRE_OLMEC_ORDERED_KEYS.includes(key)) {
+        scaledSecs = interpolateAnchors(preOlmecAnchors, secs);
+      } else if (hell && key === "Yama" && !HELL_YAMA_SECONDS_EXCLUDED.has(category)) {
+        scaledSecs = HELL_YAMA_SECONDS;
+      } else if (useFixedOlmec && hell && POST_OLMEC_CUMULATIVE_KEYS.has(key)) {
+        // Reconstruct this cumulative split around the fixed Olmec time:
+        // fixed Olmec time, plus however long after Olmec the reference
+        // run took to reach it, scaled by the same combined ratio.
+        scaledSecs = fixedOlmecSeconds + nonOlmecRatio * (secs - refOlmecSeconds);
+      } else {
+        scaledSecs = secs * nonOlmecRatio;
+      }
+      scaled[key] = value.trim().endsWith("s")
+        ? `${Math.max(0, Math.round(scaledSecs))}s`
+        : formatSecondsAsTime(scaledSecs);
+    }
+    const hellEntry = computeHellEntry(scaled);
+    if (hellEntry) scaled["Hell Entry"] = hellEntry;
+    return scaled;
+  }
+
+  syncBtn.addEventListener("click", () => {
+    localStorage.setItem(PROFILE_STORAGE_KEY, mossProfileInput.value.trim());
+    // loadKnownSplitsIfOwner() already runs from inside the
+    // MossRankingSynced handler once the response lands - no need to
+    // chain it here too.
+    syncFromMossRanking(false);
+  });
+
+  // Named full-profile save slots (times/ranks/splits, not just splits) -
+  // lets more than one player share this same installation, switching
+  // between them without their data getting mixed together or lost. Keyed
+  // by the synced MossRanking username itself (scraped from the profile
+  // page's own title), so there's nothing to type - sync a profile, then
+  // saving just works.
+  const SAVED_PROFILES_KEY = "pbTracker.savedProfiles";
+
+  function loadSavedProfiles() {
+    try {
+      return JSON.parse(localStorage.getItem(SAVED_PROFILES_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function populateProfileDropdown(selectName) {
+    const profiles = loadSavedProfiles();
+    const names = Object.keys(profiles).sort((a, b) => a.localeCompare(b));
+    loadProfileSelect.innerHTML = '<option value="">Load Profile</option>';
+    for (const name of names) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      loadProfileSelect.appendChild(opt);
+    }
+    if (selectName && names.includes(selectName)) loadProfileSelect.value = selectName;
+  }
+  populateProfileDropdown();
+
+  saveProfileBtn.addEventListener("click", () => {
+    if (Object.keys(pbs).length === 0) return; // guarded by disabled, but just in case
+    if (!syncedUsername) {
+      syncStatus.textContent = "Sync PBs first - the profile name comes from your MossRanking username.";
+      return;
+    }
+
+    const profiles = loadSavedProfiles();
+    if (profiles[syncedUsername] && !confirm(`"${syncedUsername}" already has a saved profile - overwrite it?`)) {
+      return;
+    }
+
+    // A full snapshot (times/ranks/splits, AND any hand-tweaked WR split
+    // overrides) under this username, not just splits - loading it back
+    // should give you that player back whole, not just drop their splits
+    // onto whoever happens to be loaded.
+    const snapshot = {};
+    for (const [cat, pb] of Object.entries(pbs)) {
+      snapshot[cat] = { ...pb, splits: pb.splits ? { ...pb.splits } : undefined };
+    }
+    const wrSnapshot = {};
+    for (const [cat, splits] of Object.entries(wrSplits)) {
+      wrSnapshot[cat] = { ...splits };
+    }
+    profiles[syncedUsername] = { pbs: snapshot, wrSplits: wrSnapshot };
+    localStorage.setItem(SAVED_PROFILES_KEY, JSON.stringify(profiles));
+    populateProfileDropdown(syncedUsername);
+    syncStatus.textContent = `Saved profile "${syncedUsername}".`;
+  });
+
+  // Switches to a saved profile outright - replaces pbs with exactly what
+  // was saved (not merged onto whatever's currently loaded) and makes it
+  // the current profile, same as syncing that player would, so "Current
+  // Profile" and every PB/rank/split on screen all agree with each other.
+  loadProfileSelect.addEventListener("change", () => {
+    const name = loadProfileSelect.value;
+    if (!name) return;
+    const profiles = loadSavedProfiles();
+    const saved = profiles[name];
+    if (!saved) return;
+
+    // Invalidates any sync still in flight for whichever profile was
+    // active before this - see the syncGeneration comment above.
+    syncGeneration++;
+
+    // A flat save (its own top-level keys are category names) predates
+    // the {pbs, wrSplits} wrapper shape - nobody has a category literally
+    // named "pbs", so its presence as an object is what tells the two
+    // apart. A save from the window when the wrapper instead held
+    // {pbs, goalPbs}, for a now-removed Goal PBs feature, still unwraps
+    // correctly here too; there's just no .wrSplits key to find, so
+    // wrSnapshot below falls back to empty exactly like a flat save does.
+    const isWrapped = saved.pbs && typeof saved.pbs === "object";
+    const pbSnapshot = isWrapped ? saved.pbs : saved;
+    const wrSnapshot = isWrapped ? (saved.wrSplits || {}) : {};
+
+    // An earlier version of "Save Player Profile" only ever stored splits
+    // (the category's value WAS its splits object directly, with no PB
+    // time anywhere) - handle each category by its own actual shape
+    // rather than gating on the whole profile, since one saved under an
+    // old version and then partly re-saved can have a mix of both. A
+    // category with no .time has no PB to show until a fresh sync
+    // provides one, but its split values (wherever they're actually
+    // sitting) are still real and are kept either way.
+    const restored = {};
+    for (const [cat, pb] of Object.entries(pbSnapshot)) {
+      if (!pb || typeof pb !== "object") continue;
+      if (pb.time) {
+        restored[cat] = { ...pb, splits: pb.splits ? { ...pb.splits } : undefined };
+      } else if (pb.splits) {
+        // synced: true so a sync can fill .time back in - see the same
+        // note in loadPBs' repair.
+        restored[cat] = { splits: { ...pb.splits }, synced: true };
+      } else {
+        restored[cat] = { splits: { ...pb }, synced: true };
+      }
+    }
+    pbs = restored;
+    savePBs(pbs);
+
+    const restoredWr = {};
+    for (const [cat, splits] of Object.entries(wrSnapshot)) {
+      if (!splits || typeof splits !== "object") continue;
+      restoredWr[cat] = { ...splits };
+    }
+    wrSplits = restoredWr;
+    saveWrSplits(wrSplits);
+
+    syncedUsername = name;
+    localStorage.setItem(SYNCED_USERNAME_KEY, syncedUsername);
+    updateCurrentProfileDisplay();
+
+    mossProfileInput.value = name;
+    localStorage.setItem(PROFILE_STORAGE_KEY, name);
+
+    // If this is REFERENCE_OWNER's own profile, backfill any split still
+    // missing from the save (e.g. one saved before splits were restored)
+    // the same way a sync would - loading a profile should get you back
+    // everything syncing it would, not a strictly weaker version of it.
+    loadKnownSplitsIfOwner();
+
+    renderPBGlance();
+    renderWorldRecordsGlance();
+    renderDisplay();
+
+    const missingTimeCount = Object.values(pbs).filter((pb) => !pb.time).length;
+    syncStatus.textContent = missingTimeCount
+      ? `Loaded profile "${name}" - ${missingTimeCount} ` +
+        `categor${missingTimeCount === 1 ? "y has" : "ies have"} splits saved from an ` +
+        `older version but no PB time. Sync "${name}" to fill those back in, then Save ` +
+        `Player Profile again to update the save.`
+      : `Loaded profile "${name}".`;
+  });
+
+  // The two panels under Personal Bests (Estimate Splits' Olmec form, the
+  // PB list) are mutually exclusive - opening one closes whichever of the
+  // other was open, instead of stacking into a wall of panels at once.
+  function closeAllPbPanels() {
+    estimateSplitsForm.classList.remove("open");
+    pbGlance.classList.add("hidden");
+    pbGlanceFilterRow.classList.add("hidden");
+    togglePbGlanceBtn.textContent = "Show PBs";
+  }
+
+  // Both Olmec choices start blank (see the form's own "Choose..." default
+  // option) - Estimate stays disabled until both are actually picked.
+  function updateEstimateBtnEnabled() {
+    confirmEstimateBtn.disabled = !(lowPctOlmecSelect.value && anyPctOlmecSelect.value);
+  }
+  lowPctOlmecSelect.addEventListener("change", updateEstimateBtnEnabled);
+  anyPctOlmecSelect.addEventListener("change", updateEstimateBtnEnabled);
+  updateEstimateBtnEnabled();
+
+  // Opens (or closes) the Olmec-assumption form instead of estimating
+  // right away - how long Olmec takes depends heavily on which fight
+  // strat you're assuming, so that's asked up front rather than guessed.
+  estimateSplitsBtn.addEventListener("click", () => {
+    const wasOpen = estimateSplitsForm.classList.contains("open");
+    closeAllPbPanels();
+    if (!wasOpen) estimateSplitsForm.classList.add("open");
+    estimateStatus.textContent = "";
+  });
+
+  // Fills in missing splits for every PB that has a time, scaling the
+  // reference splits to that PB's own time (same math as the WR Splits
+  // overlay, just targeting the PB instead of the WR) - never touches a
+  // split that's already set, hand-entered or otherwise. Non-hell/chain/
+  // eggplant categories with "Low%" or "Any%" in their name get Olmec
+  // fixed to the chosen strat's time instead of scaled with the rest of
+  // the run, same reasoning as the WR Splits overlay's fixed Olmec - a
+  // real Olmec kill clusters around whatever strat you're using, it
+  // doesn't track overall pace the way movement through levels does.
+  confirmEstimateBtn.addEventListener("click", () => {
+    const lowPctOlmecSeconds = parseInt(lowPctOlmecSelect.value, 10);
+    const anyPctOlmecSeconds = parseInt(anyPctOlmecSelect.value, 10);
+    let changedAny = false;
+    for (const [name, pb] of Object.entries(pbs)) {
+      if (!pb.time) continue;
+      let assumedOlmecSeconds = null;
+      if (!isHellCategory(name)) {
+        if (name.includes("Low%")) assumedOlmecSeconds = lowPctOlmecSeconds;
+        else if (name.includes("Any%")) assumedOlmecSeconds = anyPctOlmecSeconds;
+      }
+      // wrOverrides here is whatever's been hand-corrected for this
+      // category via the World Records editor - a route-level fact
+      // (e.g. "No Gold" Mines=27s), not something specific to the WR
+      // run, so it calibrates a regular player's own estimate too.
+      const scaled = computeTargetSplits(name, pb.time, {
+        ...(assumedOlmecSeconds != null ? { assumedOlmecSeconds } : {}),
+        wrOverrides: wrSplits[name],
+      });
+      if (!scaled) continue;
+      const merged = { ...(pb.splits || {}) };
+      let changed = false;
+      for (const [key, value] of Object.entries(scaled)) {
+        if (key === "Hell Entry") continue; // derived live by default - bulk estimate shouldn't pre-fill it
+        if (!merged[key]) {
+          merged[key] = value;
+          changed = true;
+        }
+      }
+      if (changed) {
+        pbs[name] = { ...pb, splits: merged };
+        changedAny = true;
+      }
+    }
+    if (changedAny) {
+      savePBs(pbs);
+      renderPBGlance();
+      renderDisplay();
+    }
+    estimateSplitsForm.classList.remove("open");
+    estimateStatus.textContent = changedAny
+      ? "Splits estimated! Click a category's ✎ to see them."
+      : "Nothing to estimate - every category either has no PB time or already has its splits.";
+  });
+
+  togglePbGlanceBtn.addEventListener("click", () => {
+    const wasOpen = !pbGlance.classList.contains("hidden");
+    closeAllPbPanels();
+    if (!wasOpen) {
+      pbGlance.classList.remove("hidden");
+      pbGlanceFilterRow.classList.remove("hidden");
+      togglePbGlanceBtn.textContent = "Collapse PBs";
+    }
+  });
+
+  // World Records is its own section now, independent of the Personal
+  // Bests panels above - it just toggles its own body open/closed instead
+  // of going through closeAllPbPanels().
+  toggleWorldRecordsBtn.addEventListener("click", () => {
+    const wasOpen = !worldRecordsBody.classList.contains("hidden");
+    if (wasOpen) {
+      worldRecordsBody.classList.add("hidden");
+      toggleWorldRecordsBtn.textContent = "Show World Records";
+    } else {
+      worldRecordsBody.classList.remove("hidden");
+      toggleWorldRecordsBtn.textContent = "Collapse World Records";
+      renderWorldRecordsGlance();
+    }
+  });
+
+  // Re-scrapes mossranking.com/spelunky-hd/cats for every category's
+  // current WR holder + time (see RefreshWorldRecords in server.py) and
+  // adopts the result live - the response lands in ws.onmessage's
+  // "WorldRecordsRefreshed" branch, which also reports what changed.
+  refreshWorldRecordsBtn.addEventListener("click", () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      worldRecordsRefreshStatus.textContent = "Not connected - can't refresh right now.";
+      return;
+    }
+    refreshWorldRecordsBtn.disabled = true;
+    worldRecordsRefreshStatus.textContent = "Refreshing World Records from MossRanking...";
+    ws.send(JSON.stringify({ type: "RefreshWorldRecords" }));
+  });
+
+  mainSpeedOnlyCheck.addEventListener("change", () => {
+    localStorage.setItem(MAIN_SPEED_ONLY_KEY, mainSpeedOnlyCheck.checked ? "1" : "0");
+    renderPBGlance();
+  });
+
+  wrMainSpeedOnlyCheck.addEventListener("change", () => {
+    localStorage.setItem(WR_MAIN_SPEED_ONLY_KEY, wrMainSpeedOnlyCheck.checked ? "1" : "0");
+    renderWorldRecordsGlance();
+  });
+
+  // Fills listEl with one combined row per split key that has a PB and/or
+  // WR value, in splitKeysFor(category) order - each row shows the split
+  // name plus whichever of the PB/WR time columns are currently enabled
+  // (getPbValue/getWrValue are only called when that column is on). Returns
+  // how many rows were drawn so the caller can hide the whole block when
+  // there's nothing to show.
+  function renderSplitRows(listEl, category, showPbCol, getPbValue, showWrCol, getWrValue) {
+    const entries = splitKeysFor(category).filter((k) => {
+      return (showPbCol && getPbValue(k)) || (showWrCol && getWrValue(k));
+    });
+    listEl.innerHTML = "";
+    for (const key of entries) {
+      const row = document.createElement("div");
+      row.className = "split-row";
+      const name = document.createElement("span");
+      name.className = "split-name";
+      name.textContent = splitLabel(key);
+      row.appendChild(name);
+      if (showPbCol) {
+        const pbTime = document.createElement("span");
+        pbTime.className = "split-time";
+        pbTime.textContent = getPbValue(key) || "";
+        row.appendChild(pbTime);
+      }
+      if (showWrCol) {
+        const wrTime = document.createElement("span");
+        wrTime.className = "split-time wr-time";
+        wrTime.textContent = getWrValue(key) || "";
+        row.appendChild(wrTime);
+      }
+      listEl.appendChild(row);
+    }
+    return entries.length;
+  }
+
+  // Paints one corner-pair (the real overlay's, or the dashboard's OBS
+  // preview) from current state. Pulled out of renderDisplay so the
+  // preview can stay a pixel-for-pixel twin of the real output instead of
+  // a second hand-maintained copy that can drift out of sync with it.
+  function paintCorners(el, opts) {
+    const {
+      showPbSplits, showWrSplits, showCategory, showPb, showRank, showRating, showDate,
+    } = opts;
+    el.categoryLine.style.display = showCategory ? "" : "none";
+
+    if (currentCategory === null) {
+      el.categoryText.textContent = "Waiting for game...";
+      el.categoryLine.classList.add("pending");
+      el.pbText.textContent = "";
+      el.pbText.classList.add("unset");
+      el.rankText.style.display = "none";
+      el.dateText.style.display = "none";
+      el.splitsBlock.style.display = "none";
+      return;
+    }
+    el.categoryLine.classList.remove("pending");
+    el.categoryText.textContent = currentCategory;
+    const lookupCategory = resolveCategoryForData(currentCategory);
+    const pb = pbs[lookupCategory];
+    const havePb = !!(pb && pb.time);
+    if (havePb) {
+      if (showPb) {
+        el.pbText.textContent = "PB: " + pb.time;
+        el.pbText.classList.remove("unset");
+        el.pbText.style.display = "";
+      } else {
+        el.pbText.textContent = "";
+        el.pbText.style.display = "none";
+      }
+      const parts = [];
+      if (showRank && pb.rank != null) parts.push("Rank " + pb.rank);
+      if (showRating && pb.rating != null) parts.push(pb.rating);
+      if (parts.length) {
+        el.rankText.textContent = parts.join(" - ");
+        el.rankText.style.display = "";
+      } else {
+        el.rankText.style.display = "none";
+      }
+      if (showDate && pb.date) {
+        el.dateText.textContent = formatDate(pb.date);
+        el.dateText.style.display = "";
+      } else {
+        el.dateText.style.display = "none";
+      }
+    } else {
+      el.pbText.textContent = "";
+      el.pbText.classList.add("unset");
+      el.rankText.style.display = "none";
+      el.dateText.style.display = "none";
+    }
+
+    // Splits: PB and WR (est) now share one combined list/block instead of
+    // two separate ones, so both columns are resolved together before a
+    // single render pass - each column only turns on when its checkbox is
+    // on AND it actually has data for this category.
+    let wr = null;
+    let wrScaled = null;
+    if (showWrSplits) {
+      wr = WORLD_RECORDS[lookupCategory];
+      const wrEstimated = wr
+        ? computeTargetSplits(lookupCategory, wr.time, {
+            assumeWrOlmec: true, wrOverrides: wrSplits[lookupCategory],
+          })
+        : null;
+      // Any hand-tweaked splits (see the WR Splits dashboard section) win
+      // per-key over the live estimate, which still fills in whatever
+      // wasn't touched.
+      const wrOverride = wrSplits[lookupCategory];
+      wrScaled = wrEstimated ? { ...wrEstimated, ...(wrOverride || {}) } : (wrOverride || null);
+    }
+    const showPbCol = showPbSplits && havePb;
+    const showWrCol = showWrSplits && !!wrScaled;
+    const rowCount = (showPbCol || showWrCol)
+      ? renderSplitRows(
+          el.splitsList, lookupCategory,
+          showPbCol, (k) => splitValue(pb, k),
+          showWrCol, (k) => wrScaled[k]
+        )
+      : 0;
+    // Grid column count follows whichever of PB/WR are actually active, so
+    // there's no empty reserved column when only one is on.
+    const cols = ["minmax(7.5em, max-content)"];
+    if (showPbCol) cols.push("minmax(3.4em, max-content)");
+    if (showWrCol) cols.push("minmax(3.4em, max-content)");
+    el.splitsGrid.style.gridTemplateColumns = cols.join(" ");
+    el.pbColLabel.style.display = showPbCol ? "" : "none";
+    el.wrColLabel.style.display = showWrCol ? "" : "none";
+    el.splitsHeaderRow.style.display = rowCount ? "" : "none";
+    if (showWrCol && rowCount) {
+      el.wrAttribution.textContent = `WR: ${wr.time} by ${wr.player}`;
+      el.wrAttribution.style.display = "";
+    } else {
+      el.wrAttribution.textContent = "";
+      el.wrAttribution.style.display = "none";
+    }
+    el.splitsBlock.style.display = rowCount ? "" : "none";
+  }
+
+  const overlayEls = {
+    categoryText, categoryLine, pbText, rankText, dateText,
+    splitsBlock, splitsGrid, splitsHeaderRow, pbColLabel, wrColLabel, wrAttribution, splitsList,
+  };
+
+  function renderDisplay() {
+    paintCorners(overlayEls, {
+      showPbSplits, showWrSplits, showCategory, showPb, showRank, showRating, showDate,
+    });
+    renderPreview();
+  }
+
+  const previewEls = {
+    categoryText: previewCategoryText,
+    categoryLine: previewCategoryLine,
+    pbText: previewPbText,
+    rankText: previewRankText,
+    dateText: previewDateText,
+    splitsBlock: previewSplitsBlock,
+    splitsGrid: previewSplitsGrid,
+    splitsHeaderRow: previewSplitsHeaderRow,
+    pbColLabel: previewPbColLabel,
+    wrColLabel: previewWrColLabel,
+    wrAttribution: previewWrAttribution,
+    splitsList: previewSplitsList,
+  };
+
+  // Mirrors whatever the OBS link's own checkboxes currently say, live -
+  // this previews that exact link, not some separate preview-only setting.
+  function renderPreview() {
+    paintCorners(previewEls, {
+      showPbSplits: obsSplitsCheck.checked,
+      showWrSplits: obsWrSplitsCheck.checked,
+      showCategory: obsCategoryCheck.checked,
+      showPb: obsPbCheck.checked,
+      showRank: obsRankCheck.checked,
+      showRating: obsRatingCheck.checked,
+      showDate: obsDateCheck.checked,
+    });
+  }
+
+  // The stage is drawn at the background image's real pixel size (so its
+  // em-based fonts cascade off a font-size computed with the same
+  // clamp(16px, 2.6vmin, 48px) formula the real overlay uses, evaluated
+  // against that resolution's own vmin) then scaled down to fit the
+  // preview box with a CSS transform - everything inside scales with it,
+  // corner margins included, so the proportions stay accurate instead of
+  // being hand-tuned to look roughly right.
+  function layoutPreview() {
+    const nativeW = obsPreviewImg.naturalWidth;
+    const nativeH = obsPreviewImg.naturalHeight;
+    if (!nativeW || !nativeH) return;
+    const displayW = obsPreviewImg.clientWidth;
+    if (!displayW) return;
+    const scale = displayW / nativeW;
+    const vmin = Math.min(nativeW, nativeH) / 100;
+    const rootFontPx = Math.min(48, Math.max(16, 2.6 * vmin));
+    obsPreviewStage.style.width = `${nativeW}px`;
+    obsPreviewStage.style.height = `${nativeH}px`;
+    obsPreviewStage.style.fontSize = `${rootFontPx}px`;
+    obsPreviewStage.style.transform = `scale(${scale})`;
+  }
+  if (obsPreviewImg.complete) {
+    layoutPreview();
+  } else {
+    obsPreviewImg.addEventListener("load", layoutPreview);
+  }
+  window.addEventListener("resize", layoutPreview);
+
+  obsPreviewStage.style.opacity = obsTextOpacityInput.value / 100;
+  obsTextOpacityInput.addEventListener("input", () => {
+    obsPreviewStage.style.opacity = obsTextOpacityInput.value / 100;
+    saveLinkOpts();
+    refreshLinks();
+  });
+
+  // Compact, read-only-except-time glance at every tracked category - no
+  // per-row splits, no remove button, just enough to scan at a glance.
+  // Also keeps the splits-editor dropdown's own option list in sync.
+  // Which category's splits panel is open, if any - only one at a time,
+  // toggled open via the small edit button on its own row.
+  let editingCategory = null;
+
+  function renderPBGlance() {
+    saveProfileBtn.disabled = Object.keys(pbs).length === 0;
+    const allNames = Object.keys(pbs).sort((a, b) => a.localeCompare(b));
+    if (editingCategory && !allNames.includes(editingCategory)) editingCategory = null;
+
+    // "Main Speed" has no flag of its own in synced data (MossRanking
+    // doesn't say which group a category came from) - REFERENCE_SPLITS is
+    // already exactly that set in practice, since it's the same whitelist
+    // Estimate Splits itself is scoped to (see its own "Currently for Main
+    // Speed categories only" note), so it doubles as the filter here too.
+    const names = mainSpeedOnlyCheck.checked
+      ? allNames.filter((name) => REFERENCE_SPLITS[name])
+      : allNames;
+
+    pbGlance.innerHTML = "";
+    for (const name of names) {
+      const row = document.createElement("div");
+      row.className = "glance-row";
+
+      const catSpan = document.createElement("span");
+      catSpan.className = "glance-cat";
+      catSpan.textContent = name;
+      catSpan.title = name;
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "glance-edit-btn";
+      editBtn.textContent = "✎"; // pencil
+      editBtn.title = "Edit splits";
+      editBtn.setAttribute("aria-label", `Edit splits for ${name}`);
+      editBtn.classList.toggle("active", editingCategory === name);
+      editBtn.addEventListener("click", () => {
+        editingCategory = editingCategory === name ? null : name;
+        renderPBGlance();
+      });
+
+      const timeInput = document.createElement("input");
+      timeInput.className = "time-input";
+      timeInput.type = "text";
+      timeInput.value = pbs[name].time || "";
+      timeInput.addEventListener("change", () => {
+        pbs[name] = { ...pbs[name], time: timeInput.value.trim(), synced: false };
+        savePBs(pbs);
+        renderDisplay();
+      });
+
+      const rankSpan = document.createElement("span");
+      rankSpan.className = "glance-rank";
+      const rankBits = [];
+      if (pbs[name].rank != null) rankBits.push("#" + pbs[name].rank);
+      if (pbs[name].rating != null) rankBits.push(pbs[name].rating);
+      rankSpan.textContent = rankBits.join(" ");
+
+      row.appendChild(catSpan);
+      row.appendChild(editBtn);
+      row.appendChild(timeInput);
+      row.appendChild(rankSpan);
+      pbGlance.appendChild(row);
+
+      if (name === editingCategory) {
+        pbGlance.appendChild(buildSplitsEditPanel(name));
+      }
+    }
+  }
+
+  // The splits editor for whichever ONE category's edit button was
+  // clicked - editing many categories' splits at once was the main source
+  // of visual clutter, so only one is ever open at a time.
+  function buildSplitsEditPanel(name) {
+    const panel = document.createElement("div");
+    panel.className = "inline-splits-edit";
+    const splits = pbs[name].splits || {};
+    for (const key of splitKeysFor(name)) {
+      const label = document.createElement("label");
+      label.textContent = splitLabel(key);
+      const input = document.createElement("input");
+      input.type = "text";
+      // Hell Entry is editable like every other split, but its default
+      // (whenever nothing's been typed by hand) is still computed live
+      // from Temple (4-3) + Olmec instead of a generic placeholder.
+      input.placeholder = key === "Hell Entry" ? (computeHellEntry(splits) || "e.g. 0:38") : "e.g. 0:38";
+      input.value = splits[key] || "";
+      input.addEventListener("change", () => {
+        const updated = { ...(pbs[name].splits || {}) };
+        if (input.value.trim()) {
+          updated[key] = input.value.trim();
+        } else {
+          delete updated[key];
+        }
+        pbs[name] = { ...pbs[name], splits: updated };
+        savePBs(pbs);
+        renderPBGlance();
+        renderDisplay();
+      });
+      label.appendChild(input);
+      panel.appendChild(label);
+    }
+    return panel;
+  }
+
+  // The live-estimated value for every split of a WR, before any hand
+  // tweak - what buildWrSplitsEditPanel pre-fills an untouched field with,
+  // and what an override still falls back to for whichever keys it
+  // doesn't set itself.
+  function estimatedWrSplits(name) {
+    const wr = WORLD_RECORDS[name];
+    return wr
+      ? computeTargetSplits(name, wr.time, { assumeWrOlmec: true, wrOverrides: wrSplits[name] }) || {}
+      : {};
+  }
+
+  // Same editing pattern as buildSplitsEditPanel, but against the
+  // wrSplits override store instead of pbs, with the live (and, now,
+  // override-anchored - see buildPreOlmecAnchors) estimate as the
+  // placeholder for any key that hasn't been tweaked - and clearing a
+  // field removes the override instead of writing an empty one, so it
+  // reverts back to that estimate rather than going permanently blank.
+  // Hell Entry is just another editable key here too, its placeholder
+  // coming from estimated["Hell Entry"] the same way as any other key.
+  // Saving re-renders the whole list (instead of just patching this one
+  // input) so every OTHER still-untouched field's placeholder picks up
+  // the new anchor immediately.
+  function buildWrSplitsEditPanel(name) {
+    const panel = document.createElement("div");
+    panel.className = "inline-splits-edit";
+    const estimated = estimatedWrSplits(name);
+    for (const key of splitKeysFor(name)) {
+      const label = document.createElement("label");
+      label.textContent = splitLabel(key);
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = estimated[key] || "e.g. 0:38";
+      input.value = (wrSplits[name] && wrSplits[name][key]) || "";
+      input.addEventListener("change", () => {
+        const overrides = { ...(wrSplits[name] || {}) };
+        if (input.value.trim()) {
+          overrides[key] = input.value.trim();
+        } else {
+          delete overrides[key];
+        }
+        wrSplits[name] = overrides;
+        saveWrSplits(wrSplits);
+        renderWorldRecordsGlance();
+      });
+      label.appendChild(input);
+      panel.appendChild(label);
+    }
+    return panel;
+  }
+
+  // Which WR category's splits panel is open, if any - mirrors
+  // editingCategory above but kept separate so it can't collide with a
+  // real PB's editor state.
+  let editingWrCategory = null;
+
+  // Lists every category with a known WR time - same row format as
+  // renderPBGlance (category, pencil, time), just with the WR's own fixed
+  // time instead of an editable PB, and the pencil opens the WR splits
+  // editor instead of the PB one. The "Main Speed only" checkbox here
+  // narrows the full WORLD_RECORDS list down to REFERENCE_SPLITS' set, same
+  // filtering as the PB list's own checkbox.
+  function renderWorldRecordsGlance() {
+    const allNames = Object.keys(WORLD_RECORDS).sort((a, b) => a.localeCompare(b));
+    if (editingWrCategory && !allNames.includes(editingWrCategory)) editingWrCategory = null;
+
+    const names = wrMainSpeedOnlyCheck.checked
+      ? allNames.filter((name) => REFERENCE_SPLITS[name])
+      : allNames;
+
+    worldRecordsGlance.innerHTML = "";
+    for (const name of names) {
+      const row = document.createElement("div");
+      row.className = "glance-row";
+
+      const catSpan = document.createElement("span");
+      catSpan.className = "glance-cat";
+      catSpan.textContent = name;
+      catSpan.title = name;
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "glance-edit-btn";
+      editBtn.textContent = "✎"; // pencil
+      editBtn.title = "Edit WR splits";
+      editBtn.setAttribute("aria-label", `Edit WR splits for ${name}`);
+      editBtn.classList.toggle("active", editingWrCategory === name);
+      editBtn.addEventListener("click", () => {
+        editingWrCategory = editingWrCategory === name ? null : name;
+        renderWorldRecordsGlance();
+      });
+
+      // Read-only - the WR time is a fixed historical fact, not something
+      // typed in here the way a PB's own time is.
+      const timeInput = document.createElement("input");
+      timeInput.className = "time-input";
+      timeInput.type = "text";
+      timeInput.readOnly = true;
+      timeInput.value = WORLD_RECORDS[name].time || "";
+
+      const rankSpan = document.createElement("span");
+      rankSpan.className = "glance-rank";
+      rankSpan.textContent = WORLD_RECORDS[name].player || "";
+
+      row.appendChild(catSpan);
+      row.appendChild(editBtn);
+      row.appendChild(timeInput);
+      row.appendChild(rankSpan);
+      worldRecordsGlance.appendChild(row);
+
+      if (name === editingWrCategory) {
+        worldRecordsGlance.appendChild(buildWrSplitsEditPanel(name));
+      }
+    }
+  }
+
+  settingsToggle.addEventListener("click", () => {
+    settingsPanel.classList.toggle("open");
+    if (settingsPanel.classList.contains("open")) {
+      // The preview was sized against a 0-width box while the panel was
+      // closed (compact mode toggles it with display:none) - redo it now
+      // that it's actually visible.
+      layoutPreview();
+    }
+  });
+
+  // --- Live connection to the HD Toolbox category tracker ---
+  let ws = null;
+
+  function connect() {
+    ws = new WebSocket(`ws://${location.host}/ws`);
+
+    ws.onmessage = (evt) => {
+      let msg;
+      try {
+        msg = JSON.parse(evt.data);
+      } catch (e) {
+        return;
+      }
+      if (msg.type === "Category" && msg.data) {
+        currentCategory = msg.data.category;
+      } else if (msg.type === "Empty" || msg.type === "Failure") {
+        currentCategory = null;
+      } else if (msg.type === "PBsUpdated") {
+        // Another connected client (typically your dashboard browser,
+        // from this client's point of view as the OBS browser source)
+        // just saved new PB/split data - see savePBs()'s push and
+        // server.py's matching broadcast. Adopt it live instead of only
+        // picking it up the next time this page happens to reload.
+        pbs = msg.data || {};
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(pbs));
+        renderPBGlance();
+      } else if (msg.type === "WrSplitsUpdated") {
+        // Same idea as PBsUpdated just above, for a WR Splits override
+        // saved from another connected client.
+        wrSplits = msg.data || {};
+        localStorage.setItem(WR_SPLITS_STORAGE_KEY, JSON.stringify(wrSplits));
+        if (!worldRecordsBody.classList.contains("hidden")) renderWorldRecordsGlance();
+      } else if (msg.type === "MossRankingSynced") {
+        const pending = pendingMossSync;
+        pendingMossSync = null;
+        const quiet = pending && pending.isAutoSync;
+        // The active profile may have changed (via Load Profile) since
+        // this request went out - a response for the profile that was
+        // current back then must not be merged into whatever's loaded now.
+        const stale = pending && pending.requestGeneration !== syncGeneration;
+        if (msg.ok && !stale) {
+          const previousUsername = syncedUsername;
+          if (msg.username) {
+            syncedUsername = msg.username;
+            localStorage.setItem(SYNCED_USERNAME_KEY, syncedUsername);
+            updateCurrentProfileDisplay();
+          }
+          // Switching to a genuinely different synced profile starts from
+          // a clean slate instead of merging onto whatever the previous
+          // profile left behind. Category names collide across different
+          // players - everyone has an "Any%" - so merging by name would
+          // silently graft the old profile's splits onto the new one's
+          // categories (mergeMossRankingData's own category-pruning only
+          // catches categories that don't exist in the new data at all;
+          // a same-named category looks like a normal refresh to it,
+          // which is exactly what re-syncing your OWN profile should do -
+          // this is what distinguishes that from switching to someone
+          // else's).
+          if (msg.username && previousUsername && msg.username !== previousUsername) {
+            pbs = {};
+          }
+          const { added, refreshed, removed } = mergeMossRankingData(msg.pbs || {});
+          if (!quiet) {
+            const bits = [];
+            if (added > 0) bits.push(`${added} new`);
+            if (refreshed > 0) bits.push(`${refreshed} refreshed`);
+            if (removed > 0) bits.push(`${removed} removed (belonged to a different profile)`);
+            syncStatus.textContent = bits.length ? bits.join(", ") + "." : "Already up to date.";
+          }
+          loadKnownSplitsIfOwner();
+        } else if (!msg.ok && !quiet && !stale) {
+          syncStatus.textContent = "Sync failed: " + (msg.error || "unknown error");
+        }
+        if (pending) pending.resolve();
+        return;
+      } else if (msg.type === "WorldRecordsRefreshed") {
+        refreshWorldRecordsBtn.disabled = false;
+        if (msg.ok) {
+          WORLD_RECORDS = flattenWorldRecordGroups(msg.groups || {});
+          if (!worldRecordsBody.classList.contains("hidden")) renderWorldRecordsGlance();
+          const changes = msg.changes || [];
+          if (changes.length === 0) {
+            worldRecordsRefreshStatus.textContent = "Refreshed - no changes.";
+          } else {
+            const bits = changes.slice(0, 5).map((c) => c.kind === "new"
+              ? `${c.category}: new WR ${c.time} (${c.player})`
+              : `${c.category}: ${c.oldTime} -> ${c.time} (${c.player})`);
+            const more = changes.length > 5 ? ` (+${changes.length - 5} more)` : "";
+            worldRecordsRefreshStatus.textContent =
+              `Refreshed - ${changes.length} change${changes.length === 1 ? "" : "s"}: ${bits.join("; ")}${more}`;
+          }
+        } else {
+          worldRecordsRefreshStatus.textContent = "Refresh failed: " + (msg.error || "unknown error");
+        }
+        return;
+      }
+      renderDisplay();
+    };
+
+    ws.onopen = () => {
+      // Auto-sync once connected, silently - the server needs the live
+      // connection to relay the sync request, so this can't happen until
+      // the socket is actually open. Skipped for a background tab: every
+      // relaunch of the exe opens a fresh browser tab, so old ones tend
+      // to pile up still open (just hidden) behind the current one. Such
+      // a tab still holds a live websocket and will reconnect and
+      // auto-sync right along with the active tab - using ITS OWN
+      // in-memory pbs, which can be whatever profile it last had loaded,
+      // not whatever the visible tab is showing. Since localStorage is
+      // shared across tabs of the same page, that stale tab's merge
+      // (correct fresh time/rank, but splits preserved from ITS OWN old
+      // in-memory state) can silently overwrite the active tab's correct
+      // data moments after you fix it. Only the visible tab auto-syncing
+      // avoids that; a background tab can still be synced explicitly by
+      // bringing it forward and clicking Sync PBs.
+      if (document.visibilityState === "visible") {
+        syncFromMossRanking(true);
+      }
+    };
+
+    ws.onclose = () => {
+      ws = null;
+      currentCategory = null;
+      renderDisplay();
+      setTimeout(connect, 1000);
+    };
+
+    ws.onerror = () => {
+      if (ws) ws.close();
+    };
+  }
+
+  // Keeps every open tab's in-memory state current with whatever another
+  // tab just wrote to localStorage (fires in every OTHER tab of this
+  // origin, never the one that made the change). Without this, a
+  // background tab left open from an earlier exe relaunch keeps whatever
+  // profile it loaded at page-load time - if its own auto-sync later
+  // fires (e.g. once it's brought back into focus), it merges using that
+  // stale snapshot instead of whatever the active tab has since moved to,
+  // which is exactly how Groomp's splits ended up back on Hectique's
+  // categories. This closes that gap even if a second tab stays open.
+  window.addEventListener("storage", (event) => {
+    if (event.key === STORAGE_KEY) {
+      pbs = loadPBs();
+      renderPBGlance();
+      renderDisplay();
+    } else if (event.key === SYNCED_USERNAME_KEY) {
+      syncedUsername = event.newValue;
+      updateCurrentProfileDisplay();
+    }
+  });
+
+  renderPBGlance();
+  renderDisplay();
+  connect();
+})();
+</script>
+
+</body>
+</html>

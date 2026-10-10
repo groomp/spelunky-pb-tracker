@@ -1,0 +1,37 @@
+# Runtime data written next to the running app - personal to whoever's
+# running it, never something to ship or commit.
+exported_pbs.json
+exported_wr_splits.json
+world_records_cache.json
+install.log
+server.log
+*.log
+
+# Superseded by reference_splits.json (same data, no longer actually
+# fetched by index.html) - kept locally only for historical reference.
+known_splits.json
+
+# PyInstaller build output
+build/
+dist/
+dist_build/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Dev-only scratch tooling (icon source files, the one-off scraper used to
+# build reference_splits.json) - not part of the app itself.
+icon_work/
+splits_tool/
+
+# Superseded by the compiled exe's own background/tray-icon mode - run.bat
+# (or the exe itself) is the one documented way to start this.
+Start Tracker.vbs
+_run_hidden.bat
+
+# OS cruft
+.DS_Store
+Thumbs.db

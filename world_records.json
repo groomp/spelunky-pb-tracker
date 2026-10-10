@@ -1,0 +1,813 @@
+{
+  "Main Speed": {
+    "Any%": {
+      "time": "1:32.596",
+      "player": "Kinnijup"
+    },
+    "Low%": {
+      "time": "2:16.935",
+      "player": "Hectique"
+    },
+    "Chain Hell%": {
+      "time": "3:19.970",
+      "player": "Kinnijup"
+    },
+    "No Gold": {
+      "time": "1:44.569",
+      "player": "WGPL"
+    },
+    "No Gold Low%": {
+      "time": "2:32.651",
+      "player": "WGPL"
+    },
+    "No Gold Chain Hell%": {
+      "time": "3:32.780",
+      "player": "Hectique"
+    },
+    "No Teleporter No Gold Any%": {
+      "time": "2:02.366",
+      "player": "TBPengy"
+    },
+    "Max Any%": {
+      "time": "1:54.668",
+      "player": "TBPengy"
+    },
+    "Max Low%": {
+      "time": "3:11.023",
+      "player": "TBPengy"
+    },
+    "Max Chain Hell%": {
+      "time": "3:48.149",
+      "player": "WGPL"
+    },
+    "No Teleporter Any%": {
+      "time": "2:02.366",
+      "player": "TBPengy"
+    },
+    "No Teleporter Max Any%": {
+      "time": "2:43.301",
+      "player": "TBPengy"
+    },
+    "No Teleporter Chain Hell%": {
+      "time": "3:32.780",
+      "player": "Hectique"
+    },
+    "No Teleporter Max Chain Hell%": {
+      "time": "3:58.640",
+      "player": "Hectique"
+    },
+    "Big Money": {
+      "time": "5:16.897",
+      "player": "WGPL"
+    },
+    "Chain Eggplant%": {
+      "time": "6:07.806",
+      "player": "Kinnijup"
+    },
+    "Chain Low% Hell": {
+      "time": "4:39.752",
+      "player": "TBPengy"
+    },
+    "All Shortcuts + Olmec (Loadless)": {
+      "time": "14:16.360",
+      "player": "WGPL"
+    }
+  },
+  "Main Score": {},
+  "Misc": {
+    "Hell%": {
+      "time": "3:19.970",
+      "player": "Kinnijup"
+    },
+    "Eggplant%": {
+      "time": "5:11.360",
+      "player": "Hectique"
+    },
+    "Haunted Max Any%": {
+      "time": "2:20.720",
+      "player": "Hectique"
+    },
+    "No Gold Max Any%": {
+      "time": "2:08.831",
+      "player": "WGPL"
+    },
+    "No Gold Haunted Max Any%": {
+      "time": "2:25.382",
+      "player": "WGPL"
+    },
+    "No TP Haunted Max Any%": {
+      "time": "3:03.681",
+      "player": "Hectique"
+    },
+    "No TP No Gold Max Any%": {
+      "time": "3:01.446",
+      "player": "Kinnijup"
+    },
+    "No TP No Gold Haunted Max Any%": {
+      "time": "3:13.283",
+      "player": "TBPengy"
+    },
+    "Haunted Max Low%": {
+      "time": "3:49.299",
+      "player": "Kinnijup"
+    },
+    "No Gold Max Low%": {
+      "time": "3:33.502",
+      "player": "WGPL"
+    },
+    "No Gold Haunted Max Low%": {
+      "time": "4:31.467",
+      "player": "Carlibraun"
+    },
+    "Haunted Max Chain Hell%": {
+      "time": "4:28.719",
+      "player": "Spef"
+    },
+    "No Gold Max Chain Hell%": {
+      "time": "4:58.179",
+      "player": "Kinnijup"
+    },
+    "No Gold Haunted Max Chain Hell%": {
+      "time": "5:47.655",
+      "player": "BlueCadet-3"
+    },
+    "No TP Haunted Max Chain Hell%": {
+      "time": "4:43.082",
+      "player": "WGPL"
+    },
+    "No TP No Gold Chain Hell%": {
+      "time": "3:32.780",
+      "player": "Hectique"
+    },
+    "No TP No Gold Max Chain Hell%": {
+      "time": "5:14.734",
+      "player": "WGPL"
+    },
+    "No TP No Gold Haunted Max Chain Hell%": {
+      "time": "6:28.391",
+      "player": "Hectique"
+    },
+    "Max Chain Low% Hell": {
+      "time": "6:30.316",
+      "player": "Kinnijup"
+    },
+    "Haunted Max Chain Low% Hell": {
+      "time": "7:36.078",
+      "player": "Kinnijup"
+    },
+    "No Gold Chain Low% Hell": {
+      "time": "5:51.549",
+      "player": "d_tea"
+    },
+    "No Gold Max Chain Low% Hell": {
+      "time": "8:21.266",
+      "player": "Kinnijup"
+    },
+    "No Gold Haunted Max Chain Low% Hell": {
+      "time": "9:51.355",
+      "player": "Hectique"
+    },
+    "Max Chain Eggplant%": {
+      "time": "8:07.850",
+      "player": "d_tea"
+    },
+    "Haunted Max Chain Eggplant%": {
+      "time": "17:58.599",
+      "player": "Spef"
+    },
+    "No Gold Chain Eggplant%": {
+      "time": "9:15.071",
+      "player": "Hectique"
+    },
+    "No Gold Max Chain Eggplant%": {
+      "time": "9:15.071",
+      "player": "Hectique"
+    },
+    "No Gold Haunted Max Chain Eggplant%": {
+      "time": "22:09.561",
+      "player": "Kinnijup"
+    },
+    "Chain Low% Eggplant": {
+      "time": "16:48.008",
+      "player": "Spef"
+    },
+    "Max Chain Low% Eggplant": {
+      "time": "16:48.008",
+      "player": "Spef"
+    },
+    "Chain Shield Run": {
+      "time": "5:35.303",
+      "player": "Hectique"
+    },
+    "Max Chain Shield Run": {
+      "time": "8:51.780",
+      "player": "SoulAro"
+    },
+    "No Gold Chain Shield Run": {
+      "time": "15:58.353",
+      "player": "jjg27"
+    },
+    "No Gold Max Chain Shield Run": {
+      "time": "15:58.353",
+      "player": "jjg27"
+    },
+    "No%": {
+      "time": "3:21.604",
+      "player": "jjg27"
+    },
+    "Max No%": {
+      "time": "6:25.150",
+      "player": "Hectique"
+    },
+    "Jumbo Money": {
+      "time": "12:13.551",
+      "player": "Hectique"
+    },
+    "Low% Big Money": {
+      "time": "16:36.585",
+      "player": "d_tea"
+    },
+    "All Shortcuts + Olmec (RTA)": {
+      "time": "14:40.310",
+      "player": "WGPL"
+    },
+    "All Journal Entries (Loadless)": {
+      "time": "24:18.910",
+      "player": "Hectique"
+    },
+    "All Journal Entries (RTA)": {
+      "time": "24:43.850",
+      "player": "Hectique"
+    },
+    "All Characters (Loadless)": {
+      "time": "44:41.910",
+      "player": "Hectique"
+    },
+    "All Characters (RTA)": {
+      "time": "45:54.920",
+      "player": "Hectique"
+    },
+    "Tutorial% (Loadless)": {
+      "time": "1:09.960",
+      "player": "TBPengy"
+    },
+    "Tutorial% (RTA)": {
+      "time": "1:11.740",
+      "player": "TBPengy"
+    },
+    "Temple Shortcut Low%": {
+      "time": "0:39.100",
+      "player": "Hectique"
+    },
+    "Ice Caves Shortcut Max Low%": {
+      "time": "2:07.980",
+      "player": "WGPL"
+    }
+  },
+  "Pacifist": {
+    "Pacifist Any%": {
+      "time": "2:09.025",
+      "player": "d_tea"
+    },
+    "Max Pacifist Any%": {
+      "time": "2:30.820",
+      "player": "Hectique"
+    },
+    "Haunted Max Pacifist Any%": {
+      "time": "3:45.463",
+      "player": "WGPL"
+    },
+    "No Gold Pacifist Any%": {
+      "time": "2:20.218",
+      "player": "Hectique"
+    },
+    "No Gold Max Pacifist Any%": {
+      "time": "3:22.787",
+      "player": "d_tea"
+    },
+    "No Gold Haunted Max Pacifist Any%": {
+      "time": "3:45.463",
+      "player": "WGPL"
+    },
+    "No TP Pacifist Any%": {
+      "time": "2:25.717",
+      "player": "SoulAro"
+    },
+    "No TP Max Pacifist Any%": {
+      "time": "3:42.731",
+      "player": "SoulAro"
+    },
+    "No TP Haunted Max Pacifist Any%": {
+      "time": "3:45.463",
+      "player": "WGPL"
+    },
+    "No TP No Gold Pacifist Any%": {
+      "time": "2:26.937",
+      "player": "TBPengy"
+    },
+    "No TP No Gold Max Pacifist Any%": {
+      "time": "3:42.731",
+      "player": "SoulAro"
+    },
+    "No TP No Gold Haunted Max Pacifist Any%": {
+      "time": "3:45.463",
+      "player": "WGPL"
+    },
+    "Pacifist Low%": {
+      "time": "2:48.067",
+      "player": "Hectique"
+    },
+    "Max Pacifist Low%": {
+      "time": "5:00.283",
+      "player": "TBPengy"
+    },
+    "Haunted Max Pacifist Low%": {
+      "time": "7:04.199",
+      "player": "TBPengy"
+    },
+    "No Gold Pacifist Low%": {
+      "time": "3:13.189",
+      "player": "TBPengy"
+    },
+    "No Gold Max Pacifist Low%": {
+      "time": "5:20.617",
+      "player": "Hectique"
+    },
+    "No Gold Haunted Max Pacifist Low%": {
+      "time": "7:21.508",
+      "player": "Hectique"
+    },
+    "Pacifist No%": {
+      "time": "5:52.832",
+      "player": "SoulAro"
+    },
+    "Max Pacifist No%": {
+      "time": "16:11.206",
+      "player": "Hectique"
+    },
+    "Pacifist Chain Hell%": {
+      "time": "5:26.175",
+      "player": "Hectique"
+    },
+    "Max Pacifist Chain Hell%": {
+      "time": "7:56.475",
+      "player": "Hectique"
+    },
+    "Haunted Max Pacifist Chain Hell%": {
+      "time": "8:19.860",
+      "player": "Hectique"
+    },
+    "No Gold Pacifist Chain Hell%": {
+      "time": "5:26.175",
+      "player": "Hectique"
+    },
+    "No Gold Max Pacifist Chain Hell%": {
+      "time": "7:56.475",
+      "player": "Hectique"
+    },
+    "No Gold Haunted Max Pacifist Chain Hell%": {
+      "time": "11:17.751",
+      "player": "Hectique"
+    },
+    "No TP Pacifist Chain Hell%": {
+      "time": "5:26.175",
+      "player": "Hectique"
+    },
+    "No TP Max Pacifist Chain Hell%": {
+      "time": "8:17.064",
+      "player": "SoulAro"
+    },
+    "No TP Haunted Max Pacifist Chain Hell%": {
+      "time": "11:17.751",
+      "player": "Hectique"
+    },
+    "No TP No Gold Pacifist Chain Hell%": {
+      "time": "5:26.175",
+      "player": "Hectique"
+    },
+    "No TP No Gold Max Pacifist Chain Hell%": {
+      "time": "8:17.064",
+      "player": "SoulAro"
+    },
+    "No TP No Gold Haunted Max Pacifist Chain Hell%": {
+      "time": "11:17.751",
+      "player": "Hectique"
+    },
+    "Pacifist Chain Low% Hell": {
+      "time": "13:03.161",
+      "player": "Hectique"
+    },
+    "Max Pacifist Chain Low% Hell": {
+      "time": "21:42.550",
+      "player": "Hectique"
+    },
+    "No Gold Pacifist Chain Low% Hell": {
+      "time": "20:37.172",
+      "player": "SoulAro"
+    },
+    "Pacifist Chain Eggplant%": {
+      "time": "9:40.759",
+      "player": "Hectique"
+    },
+    "Max Pacifist Chain Eggplant%": {
+      "time": "16:21.266",
+      "player": "Hectique"
+    },
+    "No Gold Pacifist Chain Eggplant%": {
+      "time": "16:21.266",
+      "player": "Hectique"
+    },
+    "No Gold Max Pacifist Chain Eggplant%": {
+      "time": "16:21.266",
+      "player": "Hectique"
+    },
+    "Pacifist Chain Shield Run": {
+      "time": "18:06.472",
+      "player": "Hectique"
+    },
+    "Pacifist Bookskip Hell%": {
+      "time": "5:09.062",
+      "player": "SoulAro"
+    },
+    "Max Pacifist Bookskip Hell%": {
+      "time": "6:56.786",
+      "player": "SoulAro"
+    },
+    "Haunted Max Pacifist Bookskip Hell%": {
+      "time": "21:18.950",
+      "player": "TBPengy"
+    },
+    "No Gold Pacifist Bookskip Hell%": {
+      "time": "8:49.640",
+      "player": "SoulAro"
+    },
+    "No Gold Max Pacifist Bookskip Hell%": {
+      "time": "10:07.988",
+      "player": "SoulAro"
+    },
+    "No Gold Haunted Max Pacifist Bookskip Hell%": {
+      "time": "21:18.950",
+      "player": "TBPengy"
+    },
+    "No TP Pacifist Bookskip Hell%": {
+      "time": "5:09.062",
+      "player": "SoulAro"
+    },
+    "No TP Max Pacifist Bookskip Hell%": {
+      "time": "8:50.972",
+      "player": "SoulAro"
+    },
+    "No TP Haunted Max Pacifist Bookskip Hell%": {
+      "time": "21:18.950",
+      "player": "TBPengy"
+    },
+    "No TP No Gold Pacifist Bookskip Hell%": {
+      "time": "8:49.640",
+      "player": "SoulAro"
+    },
+    "No TP No Gold Max Pacifist Bookskip Hell%": {
+      "time": "10:07.988",
+      "player": "SoulAro"
+    },
+    "No TP No Gold Haunted Max Pacifist Bookskip Hell%": {
+      "time": "21:18.950",
+      "player": "TBPengy"
+    },
+    "Pacifist Low% Hell": {
+      "time": "15:30.691",
+      "player": "SoulAro"
+    },
+    "Max Pacifist Low% Hell": {
+      "time": "17:04.436",
+      "player": "SoulAro"
+    },
+    "Haunted Max Pacifist Low% Hell": {
+      "time": "41:20.378",
+      "player": "Hectique"
+    },
+    "No Gold Pacifist Low% Hell": {
+      "time": "21:08.436",
+      "player": "Hectique"
+    },
+    "No Gold Max Pacifist Low% Hell": {
+      "time": "24:19.429",
+      "player": "SoulAro"
+    },
+    "No Gold Haunted Max Pacifist Low% Hell": {
+      "time": "41:20.378",
+      "player": "Hectique"
+    },
+    "Pacifist Bookskip Eggplant%": {
+      "time": "10:39.829",
+      "player": "Hectique"
+    },
+    "Max Pacifist Bookskip Eggplant%": {
+      "time": "10:39.829",
+      "player": "Hectique"
+    },
+    "No Gold Pacifist Bookskip Eggplant%": {
+      "time": "12:13.147",
+      "player": "SoulAro"
+    },
+    "Pacifist Low% Eggplant": {
+      "time": "17:23.871",
+      "player": "Hectique"
+    },
+    "No Gold Pacifist Low% Eggplant": {
+      "time": "26:15.305",
+      "player": "Hectique"
+    },
+    "Pacifist Bookskip Shield Run": {
+      "time": "22:11.684",
+      "player": "SoulAro"
+    },
+    "Max Pacifist Bookskip Shield Run": {
+      "time": "23:13.562",
+      "player": "Hectique"
+    },
+    "No Gold Pacifist Bookskip Shield Run": {
+      "time": "22:11.684",
+      "player": "SoulAro"
+    },
+    "No Gold Max Pacifist Bookskip Shield Run": {
+      "time": "23:13.562",
+      "player": "Hectique"
+    },
+    "Pacifist Low% Shield Run": {
+      "time": "22:11.684",
+      "player": "SoulAro"
+    },
+    "No Gold Pacifist Low% Shield Run": {
+      "time": "22:11.684",
+      "player": "SoulAro"
+    },
+    "Pacifist No% Hell": {
+      "time": "25:23.484",
+      "player": "Hectique"
+    }
+  },
+  "Bookskip": {
+    "Bookskip Hell%": {
+      "time": "3:33.896",
+      "player": "Hectique"
+    },
+    "Max Bookskip Hell%": {
+      "time": "4:02.779",
+      "player": "SoulAro"
+    },
+    "Haunted Max Bookskip Hell%": {
+      "time": "4:02.779",
+      "player": "SoulAro"
+    },
+    "No Gold Bookskip Hell%": {
+      "time": "5:11.814",
+      "player": "Hectique"
+    },
+    "No Gold Max Bookskip Hell%": {
+      "time": "5:11.814",
+      "player": "Hectique"
+    },
+    "No Gold Haunted Max Bookskip Hell%": {
+      "time": "7:22.796",
+      "player": "WGPL"
+    },
+    "No TP Bookskip Hell%": {
+      "time": "3:56.499",
+      "player": "Hectique"
+    },
+    "No TP Max Bookskip Hell%": {
+      "time": "4:44.369",
+      "player": "Hectique"
+    },
+    "No TP Haunted Max Bookskip Hell%": {
+      "time": "5:16.840",
+      "player": "Spef"
+    },
+    "No TP No Gold Bookskip Hell%": {
+      "time": "5:11.814",
+      "player": "Hectique"
+    },
+    "No TP No Gold Max Bookskip Hell%": {
+      "time": "5:11.814",
+      "player": "Hectique"
+    },
+    "No TP No Gold Haunted Max Bookskip Hell%": {
+      "time": "7:22.796",
+      "player": "WGPL"
+    },
+    "Low% Hell": {
+      "time": "4:32.584",
+      "player": "TBPengy"
+    },
+    "Max Low% Hell": {
+      "time": "8:45.111",
+      "player": "SoulAro"
+    },
+    "Haunted Max Low% Hell": {
+      "time": "12:05.620",
+      "player": "d_tea"
+    },
+    "No Gold Low% Hell": {
+      "time": "5:40.816",
+      "player": "Spef"
+    },
+    "No Gold Max Low% Hell": {
+      "time": "8:45.111",
+      "player": "SoulAro"
+    },
+    "No Gold Haunted Max Low% Hell": {
+      "time": "17:04.397",
+      "player": "TBPengy"
+    },
+    "Bookskip Eggplant%": {
+      "time": "5:11.360",
+      "player": "Hectique"
+    },
+    "Max Bookskip Eggplant%": {
+      "time": "11:22.882",
+      "player": "jjg27"
+    },
+    "Haunted Max Bookskip Eggplant%": {
+      "time": "17:44.153",
+      "player": "Hectique"
+    },
+    "No Gold Bookskip Eggplant%": {
+      "time": "7:29.917",
+      "player": "TBPengy"
+    },
+    "No Gold Max Bookskip Eggplant%": {
+      "time": "17:44.153",
+      "player": "Hectique"
+    },
+    "No Gold Haunted Max Bookskip Eggplant%": {
+      "time": "17:44.153",
+      "player": "Hectique"
+    },
+    "Low% Eggplant": {
+      "time": "10:31.568",
+      "player": "d_tea"
+    },
+    "Max Low% Eggplant": {
+      "time": "17:44.153",
+      "player": "Hectique"
+    },
+    "Haunted Max Low% Eggplant": {
+      "time": "17:44.153",
+      "player": "Hectique"
+    },
+    "No Gold Low% Eggplant": {
+      "time": "17:44.153",
+      "player": "Hectique"
+    },
+    "No Gold Max Low% Eggplant": {
+      "time": "17:44.153",
+      "player": "Hectique"
+    },
+    "No Gold Haunted Max Low% Eggplant": {
+      "time": "17:44.153",
+      "player": "Hectique"
+    },
+    "Bookskip Shield Run": {
+      "time": "5:02.092",
+      "player": "Hectique"
+    },
+    "Max Bookskip Shield Run": {
+      "time": "6:08.750",
+      "player": "Hectique"
+    },
+    "No Gold Bookskip Shield Run": {
+      "time": "10:30.565",
+      "player": "Hectique"
+    },
+    "No Gold Max Bookskip Shield Run": {
+      "time": "10:30.565",
+      "player": "Hectique"
+    },
+    "Low% Shield Run": {
+      "time": "6:51.380",
+      "player": "SoulAro"
+    },
+    "Max Low% Shield Run": {
+      "time": "20:45.376",
+      "player": "Hectique"
+    },
+    "No Gold Low% Shield Run": {
+      "time": "12:17.693",
+      "player": "TBPengy"
+    },
+    "No Gold Max Low% Shield Run": {
+      "time": "20:45.376",
+      "player": "Hectique"
+    },
+    "No% Hell": {
+      "time": "12:31.482",
+      "player": "d_tea"
+    },
+    "Max No% Hell": {
+      "time": "19:33.899",
+      "player": "Hectique"
+    },
+    "No% Eggplant": {
+      "time": "41:28.576",
+      "player": "Hectique"
+    },
+    "Temple Shortcut Low% Hell": {
+      "time": "2:28.996",
+      "player": "TBPengy"
+    }
+  },
+  "Memes": {
+    "Udjat Run": {
+      "time": "14:22.531",
+      "player": "Hectique"
+    },
+    "Ankh Run": {
+      "time": "9:32.029",
+      "player": "Hectique"
+    },
+    "Hedjet Run": {
+      "time": "25:26.693",
+      "player": "Hectique"
+    },
+    "Scepter Run": {
+      "time": "6:20.005",
+      "player": "Hectique"
+    },
+    "Book of the Dead Run": {
+      "time": "11:19.798",
+      "player": "Hectique"
+    },
+    "Amulet Run": {
+      "time": "7:41.371",
+      "player": "Hectique"
+    },
+    "Key to Yama": {
+      "time": "6:15.419",
+      "player": "Spef"
+    },
+    "Snowball%": {
+      "time": "7:08.397",
+      "player": "jjg27"
+    },
+    "Landmine%": {
+      "time": "6:18.603",
+      "player": "jjg27"
+    },
+    "Basejump%": {
+      "time": "4:41.149",
+      "player": "WGPL"
+    },
+    "Voidmec Chain Hell%": {
+      "time": "9:25.699",
+      "player": "Hectique"
+    },
+    "Master Sword Chain Low% Hell": {
+      "time": "6:28.223",
+      "player": "Hectique"
+    },
+    "Draining Olmec": {
+      "time": "2:19.583",
+      "player": "BlueCadet-3"
+    },
+    "No TP Draining Olmec": {
+      "time": "3:05.914",
+      "player": "WGPL"
+    },
+    "Low% Petrock": {
+      "time": "2:53.884",
+      "player": "Hectique"
+    },
+    "Low% Firepot": {
+      "time": "2:47.967",
+      "player": "WGPL"
+    },
+    "Reverse Shortcut Low%": {
+      "time": "12:14.050",
+      "player": "Hectique"
+    },
+    "Kirbywarp": {
+      "time": "33:59.100",
+      "player": "BronxTaco"
+    },
+    "Credits Warp": {
+      "time": "43:32.116",
+      "player": "Hectique"
+    },
+    "Bookskip Book of the Dead Run": {
+      "time": "11:08.970",
+      "player": "Hectique"
+    },
+    "Bookskip Scepter Run": {
+      "time": "4:27.273",
+      "player": "Hectique"
+    },
+    "Voidmec Bookskip Hell%": {
+      "time": "7:47.506",
+      "player": "Hectique"
+    },
+    "Low% Hell Petrock": {
+      "time": "14:37.869",
+      "player": "Hectique"
+    }
+  }
+}
