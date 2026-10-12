@@ -1,16 +1,18 @@
 """
 Runs the PB tracker: serves index.html (and its JSON data file) and relays
-live category data from HD Toolbox, all from one process on one port.
+live category AND live per-area/per-level split data from HD Toolbox, all
+from one process on one port.
 
-Why a relay is needed at all: HD Toolbox's own websocket server
-(ws://localhost:4225/ws/category) only accepts connections whose Origin
-header is exactly "http://localhost:4225" - a built-in anti-DNS-rebinding
-check. A page served from anywhere else (including this one, on a different
-port) gets rejected by browser-enforced rules before it ever reaches our
-code. A plain script has no such restriction (only browsers auto-attach and
-lock down the Origin header), so this script connects to HD Toolbox itself
-and re-broadcasts what it receives to the page over a connection with no
-origin restriction of its own.
+Why a relay is needed at all: HD Toolbox's own websocket servers
+(ws://localhost:4225/ws/category, ws://localhost:4225/ws/session) only
+accept connections whose Origin header is exactly "http://localhost:4225" -
+a built-in anti-DNS-rebinding check. A page served from anywhere else
+(including this one, on a different port) gets rejected by browser-enforced
+rules before it ever reaches our code. A plain script has no such
+restriction (only browsers auto-attach and lock down the Origin header), so
+this script connects to HD Toolbox itself and re-broadcasts what it
+receives to the page over a connection with no origin restriction of its
+own.
 
 Usage: double-click run.bat, or `python server.py`. Then open
 http://localhost:4226 in a browser (or add it as an OBS browser source).
@@ -37,6 +39,10 @@ import mossranking
 mimetypes.add_type("image/webp", ".webp")  # not registered on all Python builds
 
 HD_TOOLBOX_WS = "ws://localhost:4225/ws/category"
+# HD Toolbox's Run Tracker page (run.html) is just a different view of this
+# same feed - per-area/per-level live split times for the run in progress,
+# not just the current category name.
+HD_TOOLBOX_SESSION_WS = "ws://localhost:4225/ws/session"
 HD_TOOLBOX_ORIGIN = "http://localhost:4225"
 HOST = "localhost"
 PORT = 4226
@@ -64,7 +70,11 @@ STATIC_FILES = {
 }
 
 clients = set()
-latest_message = None
+# Tracked separately per upstream feed - a single shared "latest message"
+# would let whichever feed happened to update last clobber the other, so a
+# newly-connecting client could miss its initial category OR session state.
+latest_category_message = None
+latest_session_message = None
 EXPORT_PATH = APP_DIR / "exported_pbs.json"
 # Same idea as EXPORT_PATH, for hand-tweaked WR Splits overrides instead of
 # PBs - see the "SaveWrSplits" handler below.
@@ -276,8 +286,10 @@ async def ws_handler(websocket):
     clients.add(websocket)
     print(f"PB tracker page connected ({len(clients)} connected)")
     try:
-        if latest_message is not None:
-            await websocket.send(latest_message)
+        if latest_category_message is not None:
+            await websocket.send(latest_category_message)
+        if latest_session_message is not None:
+            await websocket.send(latest_session_message)
         async for message in websocket:
             await handle_client_message(websocket, message)
     finally:
@@ -285,31 +297,36 @@ async def ws_handler(websocket):
         print(f"PB tracker page disconnected ({len(clients)} connected)")
 
 
-async def broadcast(message):
-    global latest_message
-    latest_message = message
+async def broadcast(message, which):
+    global latest_category_message, latest_session_message
+    if which == "category":
+        latest_category_message = message
+    else:
+        latest_session_message = message
     if clients:
         await asyncio.gather(
             *(client.send(message) for client in clients), return_exceptions=True
         )
 
 
-async def upstream_loop():
+async def upstream_loop(url, which, label):
+    """Relays one HD Toolbox feed (category or session) to every connected
+    pb_tracker client - see broadcast() and ws_handler(). Both feeds run
+    this same loop concurrently (see main()), each independently retrying
+    every 2s while HD Toolbox (or that specific tracker page) isn't open."""
     announced_waiting = False
     while True:
         try:
-            async with websockets.connect(
-                HD_TOOLBOX_WS, origin=HD_TOOLBOX_ORIGIN
-            ) as ws:
-                print("Connected to HD Toolbox category tracker")
+            async with websockets.connect(url, origin=HD_TOOLBOX_ORIGIN) as ws:
+                print(f"Connected to HD Toolbox {label}")
                 announced_waiting = False
                 async for message in ws:
-                    await broadcast(message)
+                    await broadcast(message, which)
         except Exception:
             # Print this once, not on every retry - HD Toolbox may just not
             # be open yet, which is normal at launch, not an error to spam.
             if not announced_waiting:
-                print("Waiting for category tracker (HD Toolbox) to open...")
+                print(f"Waiting for {label} (HD Toolbox) to open...")
                 announced_waiting = True
         await asyncio.sleep(2)
 
@@ -327,7 +344,10 @@ async def main(started_event):
             webbrowser.open(url)
         except Exception:
             pass  # not fatal - they can still open the URL themselves
-        await upstream_loop()
+        await asyncio.gather(
+            upstream_loop(HD_TOOLBOX_WS, "category", "category tracker"),
+            upstream_loop(HD_TOOLBOX_SESSION_WS, "session", "session/run tracker"),
+        )
 
 
 def run_server_thread(started_event, error_holder):

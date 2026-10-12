@@ -1,15 +1,19 @@
 # Spelunky PB Tracker
 
 A PB/WR tracker and OBS overlay for Spelunky HD speedrunning. It watches
-[HD Toolbox](https://github.com/derrp-tf/hd-toolbox)'s category tracker live
-while you play, shows your current category/PB/rank, and can overlay your
-splits (or the world record's estimated splits) right on stream.
+[HD Toolbox](https://github.com/derrp-tf/hd-toolbox) live while you play,
+shows your current category/PB/rank, and can overlay your splits (real
+measured splits for the run in progress, or the world record's estimated
+splits) right on stream.
 
 ## Features
 
 - **Live overlay** - category, PB time, rank, and rating, driven by HD
-  Toolbox's live category detection. Drop it into OBS as a transparent
-  browser source.
+  Toolbox. Drop it into OBS as a transparent browser source.
+- **Live splits** - while HD Toolbox is tracking a run, the splits column
+  shows your real measured per-area time as each one completes, instead of
+  just your stored PB - falls back to the PB/estimate for anything the
+  run hasn't reached yet.
 - **MossRanking sync** - pulls your PBs/ranks/ratings straight from your
   [mossranking.com](https://mossranking.com) profile.
 - **Split estimates** - no stopwatch-tracked splits? "Estimate PB Splits"
@@ -36,10 +40,10 @@ splits (or the world record's estimated splits) right on stream.
 4. Copy the Browser Source link into OBS as a Browser Source
    (1920x1080), or use the Personal Use Only link if you just want the
    overlay for yourself without OBS.
-5. For live category detection, have
-   [HD Toolbox](https://github.com/derrp-tf/hd-toolbox)'s category tracker
-   running too - the overlay still works without it, just without
-   knowing which category you're currently playing.
+5. Have [HD Toolbox](https://github.com/derrp-tf/hd-toolbox) running too,
+   for live category detection and live splits - the overlay still works
+   without it, just without knowing which category you're playing or
+   showing real-time split progress.
 
 ## Running from source
 

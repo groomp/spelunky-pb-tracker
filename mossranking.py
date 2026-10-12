@@ -21,13 +21,28 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 )
 
-# Group IDs (Spelunky HD, t=2) that contain named full-category runs, as
-# opposed to score boards, daily leaderboards, or individual-level splits.
-GROUPS = [1, 14, 2, 3]  # Main Speed, Main Challenge, Misc, Memes
+# Group IDs (Spelunky HD, t=2, the "g=" param on a user's own profile page)
+# that contain named full-category runs, as opposed to score boards, daily
+# leaderboards, or individual-level/area/pace splits (g=7-12, excluded).
+# Confirmed against mossranking.com/user.php?id_user=<id>&t=2's own group
+# nav links - every g= value there that leads to a real category table:
+#   1 Main Speed, 6 Main Score, 14 Main Challenge, 2 Misc, 13 Bookskip,
+#   3 Memes, 5 Pacifist.
+# Previously only [1, 14, 2, 3] - missing 5 (Pacifist) and 13 (Bookskip)
+# entirely is exactly why a category like "Pacifist No%" never showed up
+# for anyone syncing their profile, even though scrape_world_records's own
+# CATS_GROUPS below always had the right 6 top-level groups. 6 (Main
+# Score) contributes no actual PBs here (its rows are all $-amounts, which
+# TIME_RE filters out below) but is kept for completeness - if the site
+# ever reclassifies something there as timed, this picks it up for free.
+PROFILE_GROUPS = {
+    1: "Main Speed", 6: "Main Score", 14: "Main Challenge",
+    2: "Misc", 13: "Bookskip", 3: "Memes", 5: "Pacifist",
+}
 
 # cid values for mossranking.com/spelunky-hd/cats - a different group
-# numbering than GROUPS above (that's the "g=" param on a user's own
-# profile page; this is the "cid=" param on the site-wide category
+# numbering than PROFILE_GROUPS above (that's the "g=" param on a user's
+# own profile page; this is the "cid=" param on the site-wide category
 # overview). Main Score (cid 6) is included for completeness even though
 # every one of its rows is a score, not a time, so TIME_RE filters it down
 # to nothing - leaving it out would just silently drop any category the
@@ -140,13 +155,15 @@ def _parse_rows(html):
 
 def scrape_profile(user_id):
     """Returns (pbs, username). pbs is {category_name: {"time", "rank",
-    "rating", "date"}}; username is the player's Moss Ranking display name
-    (from the page's own "Profile: <name>" title), or None if it couldn't
-    be found."""
+    "rating", "date", "group"}} - "group" is which of PROFILE_GROUPS the
+    category was actually found under (e.g. "Pacifist", "Bookskip"), kept
+    for whenever a group/category filter gets built on top of this.
+    username is the player's Moss Ranking display name (from the page's
+    own "Profile: <name>" title), or None if it couldn't be found."""
     pbs = {}
     username = None
 
-    for i, g in enumerate(GROUPS):
+    for i, (g, group_name) in enumerate(PROFILE_GROUPS.items()):
         url = f"https://mossranking.com/user.php?id_user={user_id}&t=2&g={g}"
         try:
             html = _fetch(url)
@@ -184,7 +201,7 @@ def scrape_profile(user_id):
             if category not in pbs:
                 pbs[category] = {
                     "time": time_or_score, "rank": int(rank), "rating": rating,
-                    "date": cells[date_idx],
+                    "date": cells[date_idx], "group": group_name,
                 }
 
     return pbs, username
