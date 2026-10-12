@@ -20,11 +20,7 @@ splits) right on stream.
   scales a known real run's splits to your own PB time (with a
   configurable Olmec-fight assumption) to get a reasonable guess.
 - **World Records** - every category's current WR (holder + time), scraped
-  from MossRanking, with its own estimated split breakdown. Editable by
-  hand if you know a WR's real splits more precisely - correcting one
-  split rescales the others around it instead of just overriding the one
-  value, and the correction is reused for every future estimate (both the
-  WR estimate and a regular player's own PB estimate) for that category.
+  from MossRanking, with accurate split breakdown. 
   A refresh button re-scrapes MossRanking for anything that's changed.
 - **OBS-ready links** - generates a browser source URL (full size, with
   toggleable PB/WR/category/rank/rating columns) and a compact "overlay
