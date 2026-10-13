@@ -1,3 +1,4 @@
 websockets>=13.0
 pystray>=0.19.5
 Pillow>=10.0.0
+pymem>=1.13

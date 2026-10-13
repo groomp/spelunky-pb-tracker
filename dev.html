@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PB Tracker - Dev</title>
+<style>
+  :root {
+    --mr-text: #f5f5f3;
+    --mr-muted: #b5b3ad;
+    --mr-bg: #262624;
+    --mr-card-bg: #2c2b28;
+    --mr-border: #45443f;
+    --mr-orange: #cc621d;
+    --mr-green: #4caf50;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--mr-bg);
+    color: var(--mr-text);
+    font-family: "Roboto", Arial, sans-serif;
+    font-size: 15px;
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 20px;
+  }
+  .status {
+    color: var(--mr-muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .status.connected { color: var(--mr-green); }
+  .category {
+    display: inline-block;
+    background: var(--mr-card-bg);
+    border: 1px solid var(--mr-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-weight: 700;
+    color: var(--mr-orange);
+  }
+  .completed {
+    display: inline-block;
+    background: var(--mr-card-bg);
+    border: 1px solid var(--mr-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-weight: 700;
+    color: var(--mr-green);
+    margin-left: 10px;
+  }
+  .groups { margin-top: 24px; }
+  .groups {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .group {
+    background: var(--mr-card-bg);
+    border: 1px solid var(--mr-border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    min-width: 220px;
+  }
+  .group h2 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--mr-muted);
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .row .name { color: var(--mr-text); }
+  .row .value { color: var(--mr-orange); font-weight: 700; }
+  .row .value.pending { color: var(--mr-muted); font-weight: 400; }
+</style>
+</head>
+<body>
+  <h1>PB Tracker - Dev</h1>
+  <div class="status" id="status">Connecting...</div>
+  <div class="category" id="category">No category</div>
+  <div class="completed" id="completed" style="display:none"></div>
+
+  <div class="groups">
+    <div class="group">
+      <h2>Areas</h2>
+      <div id="areaRows"></div>
+    </div>
+    <div class="group">
+      <h2>ILs</h2>
+      <div id="ilRows"></div>
+    </div>
+    <div class="group">
+      <h2>Levels</h2>
+      <div id="levelRows"></div>
+    </div>
+  </div>
+
+<script>
+  // Minimal dev view: live Area/IL splits straight off the same "Session"
+  // feed the main overlay uses, with no PB/WR data involved at all - just
+  // whatever game_reader.py's RunTracker has measured for the run in
+  // progress. See liveSplitsFromRunState in index.html, which this is a
+  // deliberately pared-down copy of (same split keys/logic, no PB/WR
+  // comparison, no accuracy setting - always shown to the millisecond,
+  // since that precision is the whole point of a dev view).
+  const AREA_KEYS = ["Mines", "Jungle", "Ice Caves", "Temple (4-3)", "Hell Entry", "Hell (5-3)"];
+  const IL_KEYS = ["Olmec", "Yama", "Worm", "Mothership", "City of Gold"];
+
+  // Same rule as isHellCategory in index.html - Big Money ends in Hell
+  // but has none of these words in its name.
+  const EXTRA_HELL_CATEGORIES = new Set(["Big Money"]);
+  function isHellCategory(category) {
+    return /hell|eggplant|shield|bookskip|chain|yama|udjat|ankh|hedjet|scepter|book of the dead|amulet|snowball|landmine|basejump/i
+      .test(category) || EXTRA_HELL_CATEGORIES.has(category);
+  }
+
+  function msToTime(ms) {
+    const totalSeconds = ms / 1000;
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds - mins * 60;
+    const secsStr = secs.toFixed(3);
+    return `${mins}:${secs < 10 ? "0" + secsStr : secsStr}`;
+  }
+
+  function durationToTime(ms) {
+    const seconds = ms / 1000;
+    return seconds < 60 ? `${seconds.toFixed(3)}s` : msToTime(ms);
+  }
+
+  // Same shape as liveSplitsFromRunState in index.html - see that
+  // function's own comment for why area.time_pace (not area.time) and
+  // why Temple (4-3)/Hell (5-3)/Olmec/Yama/Worm/Mothership/City of Gold
+  // each read directly off a specific level entry instead.
+  function computeSplits(runState) {
+    const splits = {};
+    if (!runState || !Array.isArray(runState.areas)) return splits;
+    const areas = runState.areas;
+
+    const cumulativeKeys = ["Mines", "Jungle", "Ice Caves"];
+    for (let i = 0; i < cumulativeKeys.length; i++) {
+      const area = areas[i];
+      if (!area || !area.completed) break;
+      splits[cumulativeKeys[i]] = msToTime(area.time_pace);
+    }
+
+    const temple = areas[3] && Array.isArray(areas[3].levels) ? areas[3].levels[2] : null;
+    if (temple) splits["Temple (4-3)"] = msToTime(temple.time_pace);
+
+    const hell = areas[4] && Array.isArray(areas[4].levels) ? areas[4].levels[2] : null;
+    if (hell) splits["Hell (5-3)"] = msToTime(hell.time_pace);
+
+    const olmec = areas[3] && Array.isArray(areas[3].levels) ? areas[3].levels[3] : null;
+    if (olmec) splits["Olmec"] = durationToTime(olmec.time);
+
+    // Cumulative checkpoint for first stepping into World 5 - Temple
+    // (4-3)'s own time_pace plus Olmec's own duration, computed directly
+    // off the raw ms values (not round-tripped through formatted
+    // strings, unlike index.html's own computeHellEntry - this has both
+    // numbers on hand already).
+    if (temple && olmec) splits["Hell Entry"] = msToTime(temple.time_pace + olmec.time);
+
+    const yama = areas[4] && Array.isArray(areas[4].levels) ? areas[4].levels[3] : null;
+    if (yama) splits["Yama"] = durationToTime(yama.time);
+
+    function findIlLevel(areaIndices, flagKey) {
+      for (const idx of areaIndices) {
+        const area = areas[idx];
+        if (!area || !Array.isArray(area.levels)) continue;
+        for (const lv of area.levels) {
+          if (lv && lv[flagKey]) return lv;
+        }
+      }
+      return null;
+    }
+
+    const worm = findIlLevel([1, 2], "is_worm");
+    if (worm) splits["Worm"] = durationToTime(worm.time);
+
+    const mothership = findIlLevel([2], "is_mothership");
+    if (mothership) splits["Mothership"] = durationToTime(mothership.time);
+
+    // City of Gold is always reached from within area index 3
+    // (Temple/World 4), never Ice Caves - confirmed directly.
+    const cityOfGold = findIlLevel([3], "is_city_of_gold");
+    if (cityOfGold) splits["City of Gold"] = durationToTime(cityOfGold.time);
+
+    return splits;
+  }
+
+  // Whether the run in progress has reached its own finish line - same
+  // rule as isRunComplete in index.html: non-hell categories end at area
+  // index 3 (Temple (4-3) + Olmec combined), hell categories continue to
+  // area index 4 (Hell (5-3) + Yama combined).
+  function isRunComplete(category, runState) {
+    if (!runState || !Array.isArray(runState.areas)) return false;
+    const finalAreaIdx = isHellCategory(category) ? 4 : 3;
+    for (let i = 0; i <= finalAreaIdx; i++) {
+      const area = runState.areas[i];
+      if (!area || !area.completed) return false;
+    }
+    return true;
+  }
+
+  // run_state.time is a live, continuously-running clock - it keeps
+  // climbing even after the category's own finish line is reached (e.g.
+  // standing around post-game), so it can't just be read live off
+  // currentRunState.time on every render. Same freeze-once approach as
+  // nextCompletedRunSnapshot in index.html: captures the time exactly
+  // once, on the render where isRunComplete first flips true, and holds
+  // it unchanged until a fresh run's areas (all null) arrive.
+  function nextCompletedRunSnapshot(prevSnapshot, category, runState) {
+    const areas = runState && Array.isArray(runState.areas) ? runState.areas : [];
+    if (!areas.some((a) => a != null)) return null;
+    // Same hardening as index.html's own nextCompletedRunSnapshot: a
+    // quick-restart can skip past the transient "all areas null" message
+    // entirely, leaving a stale snapshot latched forever. If the live
+    // clock is ever observed BEHIND what the stale snapshot claims,
+    // that's proof a newer run is already underway - drop it here too.
+    if (prevSnapshot && typeof runState.time === "number" && runState.time < prevSnapshot.time) {
+      prevSnapshot = null;
+    }
+    if (prevSnapshot) return prevSnapshot;
+    if (category && isRunComplete(category, runState)) {
+      // Read the LAST area's own frozen time_pace, not the top-level
+      // run_state.time - confirmed live: that clock keeps climbing for as
+      // long as the game session continues, so snapshotting it can
+      // capture a wildly inflated value from well after the run actually
+      // finished (observed: a 41.077s Any% clear showing "Completed:
+      // 4:32.452" because the player kept playing for ~4 more minutes
+      // before this render happened to be the one isRunComplete got
+      // checked on). The final area's time_pace is set once, at the true
+      // moment it completed (_complete_area, game_reader.py), and never
+      // changes again - immune to all of that.
+      const finalAreaIdx = isHellCategory(category) ? 4 : 3;
+      return { category, time: areas[finalAreaIdx].time_pace };
+    }
+    return prevSnapshot;
+  }
+
+  const statusEl = document.getElementById("status");
+  const categoryEl = document.getElementById("category");
+  const completedEl = document.getElementById("completed");
+  const areaRowsEl = document.getElementById("areaRows");
+  const ilRowsEl = document.getElementById("ilRows");
+  const levelRowsEl = document.getElementById("levelRows");
+
+  function renderRows(container, keys, splits) {
+    container.innerHTML = "";
+    for (const key of keys) {
+      const row = document.createElement("div");
+      row.className = "row";
+      const value = splits[key];
+      row.innerHTML = `<span class="name">${key}</span><span class="value${value ? "" : " pending"}">${value || "—"}</span>`;
+      container.appendChild(row);
+    }
+  }
+
+  // Raw per-level breakdown, every individual level game_reader.py's
+  // RunTracker has recorded so far - same logic as renderLevelsDebug in
+  // index.html (see that function's own comments): a level explicitly
+  // marked {skipped: true} (the Worm's one combined level standing in for
+  // 2 normal ones) doesn't exist for this run at all and is left out
+  // entirely, and Ice Caves' own extra slots 4-5 are Mothership's 2
+  // levels, not real "3-5"/"3-6" ground levels.
+  function renderLevels(runState) {
+    levelRowsEl.innerHTML = "";
+    const areas = runState && Array.isArray(runState.areas) ? runState.areas : [];
+    for (let areaIdx = 0; areaIdx < areas.length; areaIdx++) {
+      const area = areas[areaIdx];
+      if (!area || !Array.isArray(area.levels)) continue;
+      const slotCount = area.levels.slice(4).some((lv) => lv) ? 6 : 4;
+      for (let slot = 0; slot < slotCount; slot++) {
+        const lv = area.levels[slot];
+        if (lv && lv.skipped) continue;
+        const label =
+          areaIdx === 2 && slot === 4 ? "Mothership" :
+          areaIdx === 2 && slot === 5 ? "3-4.2" :
+          // 4-3 (area index 3, slot 2) is only City of Gold on hell runs -
+          // on a non-hell category it's just a normal Temple level, so the
+          // label switches back to "4-3" the moment the category does too.
+          areaIdx === 3 && slot === 2 && isHellCategory(currentCategory) ? "City of Gold" :
+          `${areaIdx + 1}-${slot + 1}`;
+        const value = lv ? `${(lv.time / 1000).toFixed(3)}s` : null;
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `<span class="name">${label}</span><span class="value${value ? "" : " pending"}">${value || "—"}</span>`;
+        levelRowsEl.appendChild(row);
+      }
+    }
+  }
+
+  let currentCategory = null;
+  let currentRunState = null;
+  let completedRunSnapshot = null;
+
+  function render() {
+    categoryEl.textContent = currentCategory || "No category";
+    completedRunSnapshot = nextCompletedRunSnapshot(completedRunSnapshot, currentCategory, currentRunState);
+    if (completedRunSnapshot && completedRunSnapshot.category === currentCategory) {
+      completedEl.textContent = `Completed: ${msToTime(completedRunSnapshot.time)}`;
+      completedEl.style.display = "";
+    } else {
+      completedEl.style.display = "none";
+    }
+    const splits = computeSplits(currentRunState);
+    renderRows(areaRowsEl, AREA_KEYS, splits);
+    renderRows(ilRowsEl, IL_KEYS, splits);
+    renderLevels(currentRunState);
+  }
+
+  let ws = null;
+  function connect() {
+    ws = new WebSocket(`ws://${location.host}/ws`);
+
+    ws.onopen = () => {
+      statusEl.textContent = "Connected";
+      statusEl.classList.add("connected");
+    };
+
+    ws.onmessage = (evt) => {
+      let msg;
+      try {
+        msg = JSON.parse(evt.data);
+      } catch (e) {
+        return;
+      }
+      if (msg.type === "Category" && msg.data) {
+        currentCategory = msg.data.category;
+        if (currentCategory === "Death%") {
+          currentRunState = null;
+          completedRunSnapshot = null;
+        }
+      } else if (msg.type === "Empty" || msg.type === "Failure") {
+        currentCategory = null;
+      } else if (msg.type === "Session") {
+        currentRunState = currentCategory === "Death%"
+          ? null
+          : (msg.data && msg.data.data ? msg.data.data.run_state : null);
+      } else {
+        return;
+      }
+      render();
+    };
+
+    ws.onclose = () => {
+      ws = null;
+      statusEl.textContent = "Disconnected - retrying...";
+      statusEl.classList.remove("connected");
+      setTimeout(connect, 1000);
+    };
+
+    ws.onerror = () => {
+      if (ws) ws.close();
+    };
+  }
+
+  connect();
+  render();
+</script>
+</body>
+</html>

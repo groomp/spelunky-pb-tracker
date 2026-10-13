@@ -1,18 +1,25 @@
 """
-Runs the PB tracker: serves index.html (and its JSON data file) and relays
-live category AND live per-area/per-level split data from HD Toolbox, all
-from one process on one port.
+Runs the PB tracker: serves index.html (and its JSON data file), relays
+live category data from HD Toolbox, and reads Spelunky.exe's own live
+game state directly to build per-area split data - all from one process
+on one port.
 
-Why a relay is needed at all: HD Toolbox's own websocket servers
-(ws://localhost:4225/ws/category, ws://localhost:4225/ws/session) only
-accept connections whose Origin header is exactly "http://localhost:4225" -
-a built-in anti-DNS-rebinding check. A page served from anywhere else
-(including this one, on a different port) gets rejected by browser-enforced
-rules before it ever reaches our code. A plain script has no such
-restriction (only browsers auto-attach and lock down the Origin header), so
-this script connects to HD Toolbox itself and re-broadcasts what it
-receives to the page over a connection with no origin restriction of its
-own.
+Why a relay is needed for category data: HD Toolbox's own websocket server
+(ws://localhost:4225/ws/category) only accepts connections whose Origin
+header is exactly "http://localhost:4225" - a built-in anti-DNS-rebinding
+check. A page served from anywhere else (including this one, on a
+different port) gets rejected by browser-enforced rules before it ever
+reaches our code. A plain script has no such restriction (only browsers
+auto-attach and lock down the Origin header), so this script connects to
+HD Toolbox itself and re-broadcasts what it receives to the page over a
+connection with no origin restriction of its own.
+
+The per-area split feed is NOT relayed from HD Toolbox's own Run Tracker
+(ws://localhost:4225/ws/session) - see game_reader.py's own docstring for
+why: that tracker only records an area as complete when a poll happens to
+catch one specific, narrow screen state, and silently (and permanently)
+drops it otherwise. game_reader.py reads the game's own live state
+directly instead, with that specific bug fixed.
 
 Usage: double-click run.bat, or `python server.py`. Then open
 http://localhost:4226 in a browser (or add it as an OBS browser source).
@@ -36,13 +43,19 @@ from websockets.http11 import Response
 
 import mossranking
 
+try:
+    import game_reader
+except Exception as e:  # pragma: no cover - defensive only
+    # A broken/missing pymem install (wrong VC++ redistributable, etc.)
+    # shouldn't take down category tracking and everything else - just
+    # run without live per-area splits, the same as HD Toolbox's own Run
+    # Tracker simply not being open used to behave.
+    game_reader = None
+    print(f"Live per-area splits unavailable (game_reader failed to load: {e})")
+
 mimetypes.add_type("image/webp", ".webp")  # not registered on all Python builds
 
 HD_TOOLBOX_WS = "ws://localhost:4225/ws/category"
-# HD Toolbox's Run Tracker page (run.html) is just a different view of this
-# same feed - per-area/per-level live split times for the run in progress,
-# not just the current category name.
-HD_TOOLBOX_SESSION_WS = "ws://localhost:4225/ws/session"
 HD_TOOLBOX_ORIGIN = "http://localhost:4225"
 HOST = "localhost"
 PORT = 4226
@@ -64,6 +77,7 @@ else:
 STATIC_FILES = {
     "/": "index.html",
     "/index.html": "index.html",
+    "/dev.html": "dev.html",
     "/reference_splits.json": "reference_splits.json",
     "/preview_bg.webp": "preview_bg.webp",
     "/frog.ico": "frog.ico",
@@ -310,10 +324,11 @@ async def broadcast(message, which):
 
 
 async def upstream_loop(url, which, label):
-    """Relays one HD Toolbox feed (category or session) to every connected
-    pb_tracker client - see broadcast() and ws_handler(). Both feeds run
-    this same loop concurrently (see main()), each independently retrying
-    every 2s while HD Toolbox (or that specific tracker page) isn't open."""
+    """Relays an HD Toolbox feed (just category now - see module docstring
+    for why session/per-area splits reads the game's own live state
+    directly instead) to every connected pb_tracker client - see
+    broadcast() and ws_handler(). Retries every 2s while HD Toolbox isn't
+    open."""
     announced_waiting = False
     while True:
         try:
@@ -331,6 +346,43 @@ async def upstream_loop(url, which, label):
         await asyncio.sleep(2)
 
 
+async def session_poll_loop():
+    """Local replacement for HD Toolbox's own Run Tracker feed (see
+    game_reader.py and the module docstring above) - pymem's underlying
+    Win32 calls are blocking, so the actual polling runs on its own OS
+    thread rather than sharing this coroutine's event loop, and hands
+    each update back to it thread-safely via run_coroutine_threadsafe.
+    A no-op (just parks forever) if game_reader failed to import."""
+    if game_reader is None:
+        return
+
+    loop = asyncio.get_running_loop()
+    stop_event = threading.Event()
+
+    def on_update(run_state):
+        message = json.dumps({"type": "Session", "data": {"data": {"run_state": run_state}}})
+        asyncio.run_coroutine_threadsafe(broadcast(message, "session"), loop)
+
+    announced = {"status": None}
+
+    def on_status(status):
+        # Mirrors upstream_loop's own "don't spam the log" shape above -
+        # only prints on an actual transition, not every poll.
+        if status != announced["status"]:
+            print(f"Run tracker (reading Spelunky.exe's live game state): {status}")
+            announced["status"] = status
+
+    threading.Thread(
+        target=game_reader.poll_loop, args=(on_update, on_status, stop_event), daemon=True
+    ).start()
+
+    # Never returns in normal operation - the thread above does the actual
+    # work and reports back via on_update/broadcast; this coroutine just
+    # needs to stay alive alongside it for asyncio.gather in main().
+    while True:
+        await asyncio.sleep(3600)
+
+
 async def main(started_event):
     async with serve(ws_handler, HOST, PORT, process_request=process_request):
         # Binding succeeded - safe to let the main thread's startup wait
@@ -346,7 +398,7 @@ async def main(started_event):
             pass  # not fatal - they can still open the URL themselves
         await asyncio.gather(
             upstream_loop(HD_TOOLBOX_WS, "category", "category tracker"),
-            upstream_loop(HD_TOOLBOX_SESSION_WS, "session", "session/run tracker"),
+            session_poll_loop(),
         )
 
 

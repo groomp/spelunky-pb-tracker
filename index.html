@@ -141,6 +141,13 @@
     gap: 4px;
     padding: 16px;
     box-sizing: border-box;
+    /* Overrides html,body's own overflow:hidden (kept everywhere else so
+       no scrollbar ever bleeds into the actual OBS capture) - compact is
+       a personal glance view in a real browser tab, not a capture
+       source, so content taller than the window scrolls the whole page
+       instead of being clipped or needing an inner scroll box of its
+       own (see .level-breakdown-columns below). */
+    overflow-y: auto;
   }
 
   /* The stream layout groups splits+category together and pb+rank
@@ -219,6 +226,48 @@
     color: var(--mr-orange);
   }
 
+  /* Hidden everywhere except compact (and even there, only when opted
+     into via compactLevelBreakdownCheck/?levelbreakdown=1 - see
+     renderDisplay) - a debug/glance view, not part of the overlay
+     proper. */
+  .level-breakdown-columns {
+    display: none;
+  }
+
+  body.compact .level-breakdown-columns.shown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    order: 10;
+    max-width: 100%;
+  }
+
+  .level-breakdown-column {
+    flex: 0 0 auto;
+    min-width: 4.5em;
+    border-top: 3px solid var(--area-color);
+    padding-top: 4px;
+  }
+
+  .level-breakdown-column-header {
+    color: var(--area-color);
+    font-weight: 700;
+    font-size: 0.85em;
+    margin-bottom: 4px;
+    white-space: nowrap;
+  }
+
+  .level-breakdown-columns .level-breakdown-row {
+    font-size: 0.78em;
+    opacity: 0.9;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+
+  .level-breakdown-columns .level-breakdown-row.missing {
+    opacity: 0.4;
+  }
+
   .category {
     font-size: 2.6em;
     font-weight: 700;
@@ -247,12 +296,10 @@
     margin-top: 2px;
   }
 
-  /* "Completed Run!" + delta vs PB, shown once the run reaches its actual
-     final checkpoint (see runCompletionCell) - reuses .split-delta's
-     ahead/behind colors so a finished run reads the same way a live
-     split does. Empty (no run has finished since this page loaded, or a
-     new run has since started) collapses to nothing via :empty rather
-     than needing its own show/hide class. */
+  /* "Completed Run!", shown once the run reaches its actual final
+     checkpoint (see runCompletionCell). Empty (no run has finished since
+     this page loaded, or a new run has since started) collapses to
+     nothing via :empty rather than needing its own show/hide class. */
   .run-complete {
     font-size: 1.3em;
     font-weight: 700;
@@ -372,7 +419,13 @@
 
   /* One-shot "just landed" pop, applied only on the render where a split
      was first reached (see poppedSplitKeysByEl) - draws the eye to a
-     result that matters without needing a permanent, distracting effect. */
+     result that matters without needing a permanent, distracting effect.
+     Grows briefly then settles back to exactly the same size as every
+     other split once it's done - see buildSplitTimeCell's own negative
+     animation-delay for how that "back to normal" end state survives
+     this cell being torn down and rebuilt mid-animation (every ~50ms
+     during live play), rather than getting stuck oversized or snapping
+     back abruptly. */
   @keyframes split-pop {
     0% { transform: scale(1); }
     40% { transform: scale(1.4); }
@@ -509,7 +562,12 @@
   #settingsPanel h2 {
     margin: 0 0 14px;
     font-size: 1.2em;
-    font-family: "Fredoka", sans-serif;
+    /* Same font as the overlay's own category name (.category) - that
+       one has no font-family of its own and just inherits body's Roboto
+       stack, so this matches it explicitly rather than relying on h1's
+       "PB Tracker" Fredoka leaking down unstyled. */
+    font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
     font-weight: 600;
     color: var(--mr-text);
     display: flex;
@@ -609,6 +667,33 @@
   #pbGlanceHint.hidden,
   #worldRecordsBody.hidden {
     display: none;
+  }
+
+  /* Collapses a settings section's less-essential checkboxes behind a
+     "Customize" button (see the customize-toggle click handler) instead
+     of always showing every toggle at once. */
+  .customize-toggle {
+    margin: 8px 0 2px;
+  }
+
+  /* Gray instead of .copy-btn's usual orange - a secondary/reveal action,
+     not a primary one like Sync PBs or Copy. */
+  .customize-toggle.copy-btn {
+    background: linear-gradient(180deg, #5a5952, #45443f);
+    border-color: var(--mr-border);
+  }
+
+  .customize-toggle.copy-btn:hover {
+    background: linear-gradient(180deg, #65645c, #4e4d47);
+    border-color: #65645c;
+  }
+
+  .customize-body.hidden {
+    /* Wins over .link-opts.livesplit-toggles's own display:flex - same
+       specificity (two classes each), and that rule is declared later in
+       this stylesheet, so without this it silently loses the cascade and
+       the LiveSplit Style Splitting Customize body never actually hides. */
+    display: none !important;
   }
 
   .glance-row .time-input:disabled,
@@ -712,6 +797,47 @@
     background: rgba(0, 0, 0, 0.15);
   }
 
+  .copy-splits-row {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+    align-items: center;
+  }
+
+  .copy-splits-row select {
+    flex: 1;
+    min-width: 0;
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+    border: 1px solid var(--mr-border);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-family: "Roboto", sans-serif;
+    font-size: 0.85em;
+  }
+
+  .copy-splits-btn {
+    flex-shrink: 0;
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+    border: 1px solid var(--mr-border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.85em;
+    cursor: pointer;
+    font-family: "Roboto", sans-serif;
+  }
+
+  .copy-splits-btn:hover {
+    border-color: var(--mr-orange);
+    color: var(--mr-orange);
+  }
+
+  .copy-splits-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
   .inline-splits-edit label {
     display: flex;
     flex-direction: column;
@@ -797,7 +923,7 @@
   }
 
   /* A fixed grid instead of a ragged flex-wrap - labels of very different
-     lengths ("PB?" vs "Date Accomplished?") used to wrap unpredictably
+     lengths ("PB?" vs "Date PB Accomplished?") used to wrap unpredictably
      from row to row, which is a big part of what made this area feel like
      a messy wall of checkboxes. Two even columns keep it a clean,
      scannable block regardless of label length. */
@@ -907,10 +1033,9 @@
     white-space: nowrap;
   }
 
-  /* Accuracy/Delta selects in the LiveSplit Style Splitting subsection -
-     its own row (not .obs-preview-controls) since it has no slider to
-     stretch and fill the line with, and two labeled dropdowns should wrap
-     onto their own line on a narrow panel rather than overflow. */
+  /* Accuracy/Delta selects, now inside the LiveSplit Customize body (see
+     livesplit-controls-stacked just below) rather than their own
+     always-visible row. */
   .livesplit-controls {
     display: flex;
     flex-wrap: wrap;
@@ -921,10 +1046,28 @@
     opacity: 0.85;
   }
 
+  /* "theres 2 deltas... make them neatly organized, one on top of the
+     other" - Accuracy directly above Delta instead of side by side, and
+     (flex-basis: 100%) forced onto its own line below the checkboxes
+     rather than wrapping into the flex row alongside them. */
+  .livesplit-controls-stacked {
+    flex-direction: column;
+    align-items: flex-start;
+    flex-basis: 100%;
+    gap: 8px;
+  }
+
   .livesplit-controls label {
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+
+  /* Fixed-width label text so both selects start at the same x position
+     whether their own label reads "Accuracy" or the shorter "Delta". */
+  .livesplit-control-label {
+    display: inline-block;
+    min-width: 4.5em;
   }
 
   .livesplit-controls select {
@@ -1114,6 +1257,139 @@
     color: var(--mr-muted);
   }
 
+  /* The call-to-action banner above MossRanking Sync, shown once at least
+     one completed run this session has beaten its category's stored PB
+     (see maybeRecordSessionPb) - .hidden collapses it back to nothing
+     once sessionPbs empties out (every detected PB saved). */
+  .session-pb-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border: 1px solid #3ddc57;
+    border-radius: 10px;
+    background: rgba(61, 220, 87, 0.14);
+    font-weight: 700;
+  }
+
+  .session-pb-banner.hidden {
+    display: none;
+  }
+
+  .session-pb-banner span {
+    flex: 1;
+    font-size: 0.92em;
+  }
+
+  .session-pb-review.hidden {
+    display: none;
+  }
+
+  .session-pb-card {
+    position: relative;
+    border: 1px solid var(--mr-border);
+    border-radius: 10px;
+    padding: 12px 30px 12px 14px;
+    margin-bottom: 10px;
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  /* A quick secondary way to dismiss, alongside the full "Dismiss" button
+     down in the actions row - same confirm()/logic, just within easier
+     reach without scanning the card for it. Gray/muted on purpose, same
+     reasoning as .title-action-btn - a close affordance shouldn't compete
+     with the orange primary actions below it. */
+  .session-pb-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--mr-muted);
+    font-size: 1em;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .session-pb-close-btn:hover {
+    background: var(--mr-bg-alt);
+    color: var(--mr-text);
+  }
+
+  .session-pb-card-header {
+    margin-bottom: 6px;
+  }
+
+  .session-pb-old {
+    opacity: 0.7;
+    font-size: 0.85em;
+  }
+
+  .session-pb-new-time {
+    color: #3ddc57;
+    font-weight: 700;
+  }
+
+  .session-pb-timestamp {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-bottom: 8px;
+  }
+
+  .session-pb-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Per-level breakdown, reused by both the Session PBs review cards and
+     the "View Level Breakdown?" checkbox under Show PBs' own splits
+     editor (see renderLevelBreakdownInto) - grows to fit its content
+     instead of scrolling internally (its own little scrollbar-within-a-
+     scrollbar was removed on request); #settingsPanel's own
+     overflow-y:auto handles scrolling it like the rest of the page. */
+  /* flex-wrap, NOT column-width - column-width's horizontal overflow
+     wouldn't be reachable at all once there's no room for another column
+     (the same lesson the compact overlay's own now-removed debug view
+     learned the hard way). flex-wrap reflows left-to-right instead,
+     growing downward with the rest of the page. */
+  .level-breakdown {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid var(--mr-border);
+    border-radius: 8px;
+    font-size: 0.82em;
+    line-height: 1.5;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 18px;
+  }
+
+  .level-breakdown.hidden {
+    display: none;
+  }
+
+  .level-breakdown-row {
+    flex: 0 0 90px;
+  }
+
+  .level-breakdown-row.missing {
+    opacity: 0.4;
+  }
+
+  .level-breakdown-toggle-row {
+    margin-top: 8px;
+    font-size: 0.85em;
+  }
+
   .how-to-note {
     margin: 0 0 12px;
     font-size: 0.9em;
@@ -1211,6 +1487,10 @@
     </div>
   </div>
   <div class="run-complete" id="runCompleteText"></div>
+  <!-- Compact-only, opt-in (see compactLevelBreakdownCheck/
+       ?levelbreakdown=1) - one column per area, see
+       renderLevelBreakdownColumns. -->
+  <div class="level-breakdown-columns" id="levelBreakdownColumns"></div>
   <div class="category pending" id="categoryLine">
     <span id="categoryText">Connecting...</span>
   </div>
@@ -1234,18 +1514,27 @@
   <h1><img src="frog.ico" alt="" id="frogIcon">PB Tracker</h1>
   <div id="currentProfileLine">Current Profile: <span id="currentProfileName">None</span></div>
 
+  <div id="sessionPbBanner" class="session-pb-banner hidden">
+    <span id="sessionPbBannerText"></span>
+    <button id="reviewSessionPbsBtn" class="copy-btn">Review</button>
+  </div>
+
+  <section id="sessionPbReviewSection" class="session-pb-review hidden">
+    <h2>Session PBs</h2>
+    <div id="sessionPbReviewList"></div>
+  </section>
+
   <section id="syncSection">
     <h2>MossRanking Sync</h2>
     <div class="link-row">
       <input type="text" id="mossProfileInput" placeholder="MossRanking username, user ID, or profile link">
       <button id="syncBtn" class="copy-btn">Sync PBs</button>
       <button id="saveProfileBtn" class="copy-btn" disabled>Save Player Profile</button>
-    </div>
-    <div class="link-row">
       <select id="loadProfileSelect">
         <option value="">Load Profile</option>
       </select>
     </div>
+    <p class="how-to-note">Enter MossRanking username, user ID, or just paste the link to your profile!</p>
     <div id="syncStatus" class="status-line"></div>
   </section>
 
@@ -1292,12 +1581,16 @@
           </div>
         </div>
       </div>
-      <div class="link-opts">
+      <button type="button" class="copy-btn customize-toggle">Customize Layout</button>
+      <div class="link-opts customize-body hidden">
         <label><input type="checkbox" id="obsCategoryCheck"> Category?</label>
-        <label><input type="checkbox" id="obsPbCheck"> PB Time?</label>
+        <label><input type="checkbox" id="obsSplitsCheck"> Show PB Splits?</label>
         <label><input type="checkbox" id="obsRankCheck"> Rank?</label>
+        <label><input type="checkbox" id="obsPbCheck"> PB Time?</label>
         <label><input type="checkbox" id="obsRatingCheck"> Rating?</label>
-        <label><input type="checkbox" id="obsDateCheck"> Date Accomplished?</label>
+        <label><input type="checkbox" id="obsWrSplitsCheck"> Show WR Splits?</label>
+        <label><input type="checkbox" id="obsDateCheck"> Date PB Accomplished?</label>
+        <label><input type="checkbox" id="obsWrTimeCheck"> WR Time?</label>
       </div>
       <div class="obs-preview-controls">
         <label for="obsTextOpacityInput">Text opacity</label>
@@ -1305,68 +1598,81 @@
         <label for="obsFlashOpacityCheck"><input type="checkbox" id="obsFlashOpacityCheck"> Full opacity on run complete?</label>
       </div>
     </div>
+  </section>
 
-    <div class="link-subsection">
-      <h3>LiveSplit Style Splitting</h3>
+  <section id="livesplitSection">
+    <h2>LiveSplit-Style Autosplitter</h2>
       <div class="link-opts livesplit-toggles livesplit-master-toggle">
-        <label><input type="checkbox" id="obsCurrentSplitsCheck"> Enable Live Splitting? (WIP)</label>
+        <label><input type="checkbox" id="obsCurrentSplitsCheck"> Enable Autosplitter?</label>
       </div>
-      <div class="link-opts livesplit-toggles">
-        <label><input type="checkbox" id="obsSplitsCheck"> Show PB Splits?</label>
+      <button type="button" class="copy-btn customize-toggle">Customize</button>
+      <div class="link-opts livesplit-toggles customize-body hidden">
         <label><input type="checkbox" id="obsLivesplitShowPbDeltaCheck"> Show PB Delta?</label>
-        <label><input type="checkbox" id="obsWrSplitsCheck"> Show WR Splits?</label>
         <label><input type="checkbox" id="obsLivesplitShowWrDeltaCheck"> Show WR Delta?</label>
         <label><input type="checkbox" id="obsLivesplitAnimationsCheck"> Animations?</label>
         <label><input type="checkbox" id="obsLivesplitIncludeIlCheck" title="Olmec/Worm/Mothership/Yama/City of Gold"> Include IL Splits?</label>
         <label><input type="checkbox" id="obsLivesplitHideMinuteZeroCheck" title="e.g. 0:28 shows as 28"> Hide 0:?</label>
+        <div class="livesplit-controls livesplit-controls-stacked">
+          <label for="obsLivesplitAccuracySelect"><span class="livesplit-control-label">Accuracy</span>
+            <select id="obsLivesplitAccuracySelect">
+              <option value="seconds">Seconds (1s)</option>
+              <option value="tenths">Tenths (0.1s)</option>
+              <option value="hundredths">Hundredths (0.01s)</option>
+              <option value="thousandths">Thousandths (0.001s)</option>
+            </select>
+          </label>
+          <label for="obsLivesplitDeltaSelect"><span class="livesplit-control-label">Delta</span>
+            <select id="obsLivesplitDeltaSelect">
+              <option value="seconds">Seconds (1s)</option>
+              <option value="tenths">Tenths (0.1s)</option>
+              <option value="hundredths">Hundredths (0.01s)</option>
+              <option value="thousandths">Thousandths (0.001s)</option>
+            </select>
+          </label>
+        </div>
       </div>
-      <div class="livesplit-controls">
-        <label for="obsLivesplitAccuracySelect">Accuracy
-          <select id="obsLivesplitAccuracySelect">
-            <option value="seconds">Seconds (1s)</option>
-            <option value="tenths">Tenths (0.1s)</option>
-            <option value="hundredths">Hundredths (0.01s)</option>
-            <option value="thousandths">Thousandths (0.001s)</option>
-          </select>
-        </label>
-        <label for="obsLivesplitDeltaSelect">Delta
-          <select id="obsLivesplitDeltaSelect">
-            <option value="seconds">Seconds (1s)</option>
-            <option value="tenths">Tenths (0.1s)</option>
-            <option value="hundredths">Hundredths (0.01s)</option>
-            <option value="thousandths">Thousandths (0.001s)</option>
-          </select>
-        </label>
-      </div>
-    </div>
+  </section>
 
-    <div class="link-subsection">
-      <h3>Browser Source Link</h3>
+  <section id="browserSourceSection">
+    <h2>Browser Source Link</h2>
+      <p class="how-to-note">Make sure to customize layout before copying the link!</p>
       <div class="link-row">
         <input type="text" id="obsLinkInput" readonly>
-        <button id="copyObsLinkBtn" class="copy-btn">Copy</button>
+        <button id="copyObsLinkBtn" class="copy-btn icon-btn" title="Copy" aria-label="Copy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
       </div>
       <div class="status-line">Width: 1920, Height: 1080</div>
-    </div>
+  </section>
 
-    <div class="link-subsection">
-      <h3>Personal Use Only Link</h3>
+  <section id="compactLinkSection">
+    <h2>Personal Use Only Link</h2>
       <div class="link-row">
         <input type="text" id="compactLinkInput" readonly>
-        <button id="copyCompactLinkBtn" class="copy-btn">Copy</button>
+        <button id="copyCompactLinkBtn" class="copy-btn icon-btn" title="Copy" aria-label="Copy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
         <button id="openCompactLinkBtn" class="copy-btn">Open in New Tab</button>
       </div>
-      <div class="link-opts">
-        <label><input type="checkbox" id="compactSplitsCheck"> PB Splits?</label>
-        <label><input type="checkbox" id="compactWrSplitsCheck"> WR Splits?</label>
-        <label><input type="checkbox" id="compactCurrentSplitsCheck"> Live Splits?</label>
+      <button type="button" class="copy-btn customize-toggle">Customize</button>
+      <div class="link-opts customize-body hidden">
         <label><input type="checkbox" id="compactCategoryCheck"> Category?</label>
-        <label><input type="checkbox" id="compactPbCheck"> PB?</label>
+        <label><input type="checkbox" id="compactSplitsCheck"> PB Splits?</label>
         <label><input type="checkbox" id="compactRankCheck"> Rank?</label>
+        <label><input type="checkbox" id="compactPbCheck"> PB time?</label>
         <label><input type="checkbox" id="compactRatingCheck"> Rating?</label>
-        <label><input type="checkbox" id="compactDateCheck"> Date Accomplished?</label>
+        <label><input type="checkbox" id="compactWrSplitsCheck"> WR Splits?</label>
+        <label><input type="checkbox" id="compactDateCheck"> Date PB Accomplished?</label>
+        <label><input type="checkbox" id="compactCurrentSplitsCheck"> Live Splits?</label>
+        <label><input type="checkbox" id="compactShowPbDeltaCheck"> Show PB Delta?</label>
+        <label><input type="checkbox" id="compactLevelBreakdownCheck"> Show Level Breakdown?</label>
       </div>
-    </div>
   </section>
 
   <section id="pbSection">
@@ -1376,6 +1682,7 @@
       <button id="loadPbSplitsFileBtn" class="title-action-btn" title="Load Personal Bests from a JSON file">Load Splits</button>
       <input type="file" id="loadPbSplitsFileInput" accept="application/json,.json" style="display:none">
     </h2>
+    <p class="how-to-note">View your PBs and enter your splits here!</p>
     <div id="pbActions" class="link-row">
       <button id="togglePbGlanceBtn" class="copy-btn">Show PBs</button>
       <button id="estimateSplitsBtn" class="copy-btn">Estimate PB Splits?</button>
@@ -1426,6 +1733,7 @@
 
   <section id="worldRecordsSection">
     <h2>World Records</h2>
+    <p class="how-to-note">View the current world records and splits!</p>
     <div class="link-row">
       <button id="toggleWorldRecordsBtn" class="copy-btn">Show World Records</button>
       <button id="refreshWorldRecordsBtn" class="copy-btn icon-btn" title="Refresh World Records" aria-label="Refresh World Records">
@@ -1467,9 +1775,15 @@
   // everything it always did.
   const showCategory = urlParams.get("category") !== "0";
   const showPb = urlParams.get("pb") !== "0";
+  // New (not a pre-existing always-shown line like category/pb/rank/etc
+  // above), same opt-in-by-default-off reasoning as wrsplits/currentsplits.
+  const showWrTime = urlParams.get("wrtime") === "1";
   const showRank = urlParams.get("rank") !== "0";
   const showRating = urlParams.get("rating") !== "0";
   const showDate = urlParams.get("date") !== "0";
+  // Opt-in (unlike the other compact toggles above, which default ON) -
+  // a glance/debug view, not part of the overlay's normal output.
+  const showLevelBreakdown = urlParams.get("levelbreakdown") === "1";
   // "textopacity" (0-100) is a real, static setting baked into the copied
   // link - not just a dashboard preview knob - so it applies here too.
   // Normally it's applied once, at load. "flashopacity=1" instead treats
@@ -1488,21 +1802,26 @@
   }
 
   // LiveSplit Style Splitting's own settings (see the subsection above
-  // the Browser Source Link) - these are the universal out-of-the-box
-  // defaults for anyone who downloads the app fresh (no saved linkOpts
-  // yet - see the dashboard's own obsLivesplit*.checked defaults below,
-  // which match these exactly): Enable Live Splitting off, PB Splits on,
+  // the Browser Source Link) - these are the bare-URL fallbacks, used
+  // only when a link doesn't specify the param at all (most notably an
+  // already-copied link from before Enable Autosplitter/Animations/Show
+  // PB Delta defaulted to on - see obsCurrentSplitsCheck etc.'s own
+  // comment below). Deliberately kept off here even though the dashboard
+  // checkbox defaults moved to on, so an existing OBS browser source
+  // doesn't silently pick up the (still WIP) autosplitter just because
+  // this file changed - a fresh Copy always bakes an explicit 0/1 for
+  // every one of these anyway, never relying on this fallback.
   // PB/WR Delta off, WR Splits off, Animations off, Include IL Splits on,
-  // Hide 0: off, Accuracy/Delta both Seconds (1s).
+  // Hide 0: off, Accuracy Seconds (1s), Delta Tenths (0.1s).
   const LIVESPLIT_PRECISION_DECIMALS = { seconds: 0, tenths: 1, hundredths: 2, thousandths: 3 };
-  function normalizeLivesplitPrecision(value) {
-    return LIVESPLIT_PRECISION_DECIMALS[value] != null ? value : "seconds";
+  function normalizeLivesplitPrecision(value, fallback = "seconds") {
+    return LIVESPLIT_PRECISION_DECIMALS[value] != null ? value : fallback;
   }
   const livesplitAnimations = urlParams.get("livesplitanimations") === "1";
   const livesplitShowPbDelta = urlParams.get("livesplitshowpbdelta") === "1";
   const livesplitShowWrDelta = urlParams.get("livesplitshowwrdelta") === "1";
   const livesplitAccuracy = normalizeLivesplitPrecision(urlParams.get("livesplitaccuracy"));
-  const livesplitDeltaAccuracy = normalizeLivesplitPrecision(urlParams.get("livesplitdelta"));
+  const livesplitDeltaAccuracy = normalizeLivesplitPrecision(urlParams.get("livesplitdelta"), "tenths");
   // IL splits (Olmec/Worm/Mothership/Yama/City of Gold) default ON - links
   // copied before this toggle existed always included them. Hiding the
   // sub-minute "0:" defaults OFF - "0:28" has always been the format, so
@@ -1515,13 +1834,17 @@
   const SYNCED_USERNAME_KEY = "pbTracker.syncedUsername";
   let syncedUsername = localStorage.getItem(SYNCED_USERNAME_KEY) || null;
 
-  // Eggplant categories route through Hell too (delivering the eggplant
-  // means reaching Yama), so they're treated as hell categories the same
-  // as anything with "Hell" literally in its name. Big Money ends in Hell
-  // but has neither word in its name, so it's called out explicitly.
+  // Every other category whose route also runs all the way through Hell
+  // (delivering the eggplant/udjat eye/ankh/hedjet/scepter/book of the
+  // dead/amulet, the shield/bookskip/chain/snowball/landmine/basejump
+  // route itself, or straight up Key to Yama), so they're treated as
+  // hell categories the same as anything with "Hell" literally in its
+  // name. Big Money ends in Hell but has none of these words in its
+  // name, so it's called out explicitly.
   const EXTRA_HELL_CATEGORIES = new Set(["Big Money"]);
   function isHellCategory(category) {
-    return /hell|eggplant/i.test(category) || EXTRA_HELL_CATEGORIES.has(category);
+    return /hell|eggplant|shield|bookskip|chain|yama|udjat|ankh|hedjet|scepter|book of the dead|amulet|snowball|landmine|basejump/i
+      .test(category) || EXTRA_HELL_CATEGORIES.has(category);
   }
   function isMaxCategory(category) {
     return /max/i.test(category);
@@ -1640,19 +1963,37 @@
 
   // Max categories (non-hell) fight the Worm in either Jungle or Ice
   // Caves depending on route, and HD Toolbox's category tracker reports
-  // both simply as "Max ..." - it doesn't distinguish them. Detected the
-  // instant the category tracker switches TO a max category: if Jungle
-  // isn't completed yet at that moment, the Worm fight is still ahead of
-  // you in Jungle; if Jungle's already done, the Worm fight happens later
-  // in Ice Caves instead. "jungle" | "iceCaves" | null (not a max run, or
-  // not yet determined). Doesn't apply to Max Hell categories - see the
-  // isHellCategory exclusion in ws.onmessage's "Category" branch.
+  // both simply as "Max ..." - it doesn't distinguish them. "jungle" |
+  // "iceCaves" | null (not yet determined this attempt).
+  //
+  // Resolved once per attempt, right as (or after) the category tracker
+  // first reports it as Max - see the "Category" branch in ws.onmessage
+  // for the actual rule: if only Mines is done at that point, the Worm
+  // fight is still ahead of you in Jungle; if Mines AND Jungle are both
+  // already done, it already happened in Ice Caves instead. Reset to
+  // null whenever a fresh attempt starts (see the "Session" branch) so
+  // a later attempt in the same category streak always gets its own
+  // resolution instead of reusing an earlier one's.
   let maxWormVariant = null;
   // animation, per corner-pair (overlayEls vs previewEls each get their
-  // own set so one doesn't suppress the other's animation) - cleared
+  // own map so one doesn't suppress the other's animation) - cleared
   // whenever that corner-pair has no live splits at all (a fresh run, or
   // Live Splits toggled off), so the same key can pop again next run.
+  // Maps key -> the timestamp it was first reached (not just a Set of
+  // already-popped keys) - renderSplitRows' own listEl.innerHTML = ""
+  // tears down and rebuilds every split cell on EVERY render (a "Session"
+  // message arrives roughly every 50ms during live play), which would
+  // otherwise destroy a still-mid-animation cell and replace it with a
+  // plain, un-animated one well before its 0.5s pop actually finishes -
+  // visually an abrupt snap back to normal size instead of a smooth
+  // shrink. Knowing exactly when a key first popped lets a freshly
+  // rebuilt cell resume the SAME animation at the correct point (see
+  // SPLIT_POP_DURATION_MS/buildSplitTimeCell's own negative
+  // animation-delay) instead of restarting or skipping it.
   const poppedSplitKeysByEl = new Map();
+  // Matches @keyframes split-pop's own 0.5s duration - after this long
+  // since a key first popped, it's done animating and renders plain.
+  const SPLIT_POP_DURATION_MS = 500;
   // Last category shown per corner-pair, so a genuine change (not just a
   // re-render of the same category) can play a one-shot wiggle on the
   // category text - see paintCorners.
@@ -1718,9 +2059,9 @@
   }
 
   function formatSecondsAsTime(totalSeconds) {
-    const rounded = Math.round(totalSeconds);
-    const mins = Math.floor(rounded / 60);
-    const secs = rounded % 60;
+    const truncated = Math.floor(totalSeconds);
+    const mins = Math.floor(truncated / 60);
+    const secs = truncated % 60;
     return `${mins}:${String(secs).padStart(2, "0")}`;
   }
 
@@ -1736,9 +2077,14 @@
   // livesplitAccuracy/livesplitDeltaAccuracy above) - same M:SS shape as
   // formatSecondsAsTime, just with the chosen number of decimal places
   // instead of always rounding to the whole second.
+  // Decimals only show up at all for a sub-minute value - a split delta
+  // or PB split that's already 60s+ falls back to the plain whole-second
+  // M:SS shape regardless of the chosen Accuracy/Delta precision, same
+  // as formatDeltaSecondsWithPrecision's own "Xs" shorthand already only
+  // applied under a minute.
   function formatSecondsWithPrecision(totalSeconds, precisionKey) {
     const decimals = LIVESPLIT_PRECISION_DECIMALS[precisionKey];
-    if (!decimals) return formatSecondsAsTime(totalSeconds);
+    if (!decimals || totalSeconds >= 60) return formatSecondsAsTime(totalSeconds);
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds - mins * 60;
     const secsStr = secs.toFixed(decimals);
@@ -1840,11 +2186,17 @@
   // is. The replacement sticks for the rest of the run - liveSplits keeps
   // every split it's already seen, it doesn't forget earlier ones as the
   // run moves on to later splits.
-  function comparisonSplitCell(baseText, liveText, deltaAccuracy, showDelta) {
+  // baseText/liveText are what actually gets SHOWN (already rounded to
+  // the Accuracy setting); baseRawText/liveRawText are the full-precision
+  // values the delta itself is computed from (see livePreciseSplits
+  // above for why those can't be the same rounded strings baseText/
+  // liveText are) - falls back to parsing baseText/liveText themselves
+  // when a raw value isn't available (e.g. no live run yet).
+  function comparisonSplitCell(baseText, liveText, deltaAccuracy, showDelta, baseRawText, liveRawText) {
     if (!liveText) return baseText ? { time: baseText, deltaText: null, ahead: null } : null;
-    const liveSecs = parseTimeValue(liveText);
+    const liveSecs = parseTimeValue(liveRawText != null ? liveRawText : liveText);
     if (liveSecs == null) return baseText ? { time: baseText, deltaText: null, ahead: null } : null;
-    const baseSecs = baseText ? parseTimeValue(baseText) : null;
+    const baseSecs = parseTimeValue(baseRawText != null ? baseRawText : baseText);
     if (baseSecs == null) return { time: liveText, deltaText: null, ahead: null };
     const deltaSecs = liveSecs - baseSecs;
     const ahead = deltaSecs <= 0;
@@ -1909,6 +2261,86 @@
       splits[AREA_KEYS[i]] = msToTime(area.time_pace);
     }
 
+    // Temple+Olmec (area index 3) is still one combined area with no
+    // reliable area.completed/time_pace of its own for Temple alone - but
+    // Temple (4-3) is specifically level slot 2 of that area (4-1, 4-2,
+    // 4-3, then Olmec as 4-4), and the per-level reader now tracks each
+    // level's own cumulative time_pace directly (see game_reader.py's
+    // _record_level) rather than summing durations - the same bug that
+    // made area.time unreliable in the first place - so it's safe to
+    // read independently, whether or not the whole area (and so Olmec)
+    // has finished yet.
+    const temple = areas[3] && Array.isArray(areas[3].levels) ? areas[3].levels[2] : null;
+    if (temple) splits["Temple (4-3)"] = msToTime(temple.time_pace);
+
+    // Same idea for Hell+Yama (area index 4, hell categories only) -
+    // Hell (5-3) is level slot 2 of that area (5-1, 5-2, 5-3, then Yama
+    // as 5-4), read the same independent way as Temple (4-3) above.
+    const hell = areas[4] && Array.isArray(areas[4].levels) ? areas[4].levels[2] : null;
+    if (hell) splits["Hell (5-3)"] = msToTime(hell.time_pace);
+
+    // IL (individual level) splits - a fight/encounter's OWN duration,
+    // not a cumulative checkpoint, so these read .time (see
+    // game_reader.py's _record_level), never .time_pace like every split
+    // above. Olmec/Yama always sit in a fixed slot (the last level of
+    // their combined area); Worm/Mothership can land on different levels
+    // depending on route (e.g. Worm shows up in either Jungle or Ice
+    // Caves - see maxWormVariant elsewhere in this file), so those are
+    // found by their own is_worm/is_mothership flag instead of a fixed
+    // slot. City of Gold is always reached from within area index 3
+    // (Temple/World 4), never Ice Caves - confirmed directly, so its
+    // search is scoped there, same as Worm/Mothership's own areas.
+    const durationToTime = (ms) => formatDeltaSecondsWithPrecision(ms / 1000, accuracy);
+    function findIlLevel(areaIndices, flagKey) {
+      for (const idx of areaIndices) {
+        const area = areas[idx];
+        if (!area || !Array.isArray(area.levels)) continue;
+        for (const lv of area.levels) {
+          if (lv && lv[flagKey]) return lv;
+        }
+      }
+      return null;
+    }
+
+    const olmec = areas[3] && Array.isArray(areas[3].levels) ? areas[3].levels[3] : null;
+    if (olmec) splits["Olmec"] = durationToTime(olmec.time);
+
+    // Hell Entry and Olmec happen at the exact same instant - stepping
+    // into World 5 IS the moment Olmec's own fight ends, so this is just
+    // area 3's own completion timestamp (set once, in _complete_area,
+    // the instant that last level - Olmec - finishes), not a separate
+    // derivation. Gated on area 3 actually being complete rather than on
+    // `olmec` above so it still populates even in the (per
+    // liveSplitsFromRunState's own class-level notes) rare case a
+    // level's own entry went missing but the area total didn't.
+    const templeOlmecArea = areas[3];
+    if (templeOlmecArea && templeOlmecArea.completed) {
+      splits["Hell Entry"] = msToTime(templeOlmecArea.time_pace);
+    }
+
+    // Yama is the last level of the entire game - rather than trust its
+    // own fixed-slot level entry (areas[4].levels[3], confirmed live to
+    // not reliably show up, unlike Olmec's equivalent slot), its
+    // duration is derived the way the game itself guarantees it: the
+    // Hell area's own completion timestamp (set once area 4 is done,
+    // independent of which slot Yama's own level entry resolved to)
+    // minus Hell (5-3)'s cumulative time - whatever time is left between
+    // those two IS Yama's fight, no per-level flag needed.
+    const hellArea = areas[4];
+    if (hellArea && hellArea.completed && hell) {
+      const yamaMs = hellArea.time_pace - hell.time_pace;
+      if (yamaMs >= 0) splits["Yama"] = durationToTime(yamaMs);
+    }
+
+    const worm = findIlLevel([1, 2], "is_worm");
+    if (worm) splits["Worm"] = durationToTime(worm.time);
+
+    const mothership = findIlLevel([2], "is_mothership");
+    if (mothership) splits["Mothership"] = durationToTime(mothership.time);
+
+    const cityOfGold = findIlLevel([3], "is_city_of_gold");
+    if (cityOfGold) splits["City of Gold"] = durationToTime(cityOfGold.time);
+
     return Object.keys(splits).length ? splits : null;
   }
 
@@ -1953,9 +2385,35 @@
   function nextCompletedRunSnapshot(prevSnapshot, category, runState) {
     const areas = runState && Array.isArray(runState.areas) ? runState.areas : [];
     if (!areas.some((a) => a != null)) return null;
+    // Confirmed live: a quick-restart straight into a new attempt can
+    // skip past the transient "all areas null" message entirely (this
+    // client never sees it), leaving a stale snapshot from an earlier
+    // completed run latched forever - every later completion of the SAME
+    // category then kept showing that old frozen time instead of its own
+    // (seen as "New PB!" showing an old split-adjacent time that had
+    // nothing to do with the run that had just finished). If the live
+    // clock is ever observed BEHIND what the stale snapshot claims,
+    // that's proof a newer run is already underway, so drop it here too
+    // instead of only ever clearing on the message we might have missed.
+    if (prevSnapshot && typeof runState.time === "number" && runState.time < prevSnapshot.time) {
+      prevSnapshot = null;
+    }
     if (prevSnapshot) return prevSnapshot;
     if (category && isRunComplete(category, runState)) {
-      return { category, time: runState.time };
+      // Read the LAST area's own frozen time_pace, not the top-level
+      // run_state.time - confirmed live: that clock keeps climbing for as
+      // long as the game session continues (standing around post-game,
+      // continuing to play, HD Toolbox's own category detection catching
+      // up late, ...), so snapshotting IT can capture a wildly inflated
+      // value from well after the run actually finished (observed: a
+      // 41.077s Any% clear showing "Completed Run! 4:32.452" because the
+      // player kept playing for another ~4 minutes before this render
+      // happened to be the one where isRunComplete finally got checked).
+      // The final area's time_pace is set once, at the true moment it
+      // completed (_complete_area, game_reader.py), and never changes
+      // again - immune to all of that.
+      const finalAreaIdx = isHellCategory(category) ? 4 : 3;
+      return { category, time: areas[finalAreaIdx].time_pace };
     }
     return prevSnapshot;
   }
@@ -1974,30 +2432,62 @@
     const finalSecs = snapshot.time / 1000;
     const time = formatSecondsAsPreciseTime(finalSecs);
     const pbSecs = pb && pb.time ? parseTimeValue(pb.time) : null;
-    if (pbSecs == null) return { time, deltaText: null, ahead: null };
+    // No PB on record at all for this category yet - this completion IS
+    // the first one, so it counts as a new PB too (ahead: true, not
+    // null) rather than being silently skipped by both "New PB!" and the
+    // Session PBs review (see maybeRecordSessionPb's own .ahead check).
+    if (pbSecs == null) return { time, deltaText: null, ahead: true };
     const deltaSecs = finalSecs - pbSecs;
     const ahead = deltaSecs <= 0;
     const deltaText = (ahead ? "-" : "+") + formatSecondsAsPreciseTime(Math.abs(deltaSecs));
     return { time, deltaText, ahead };
   }
 
+  // Built in true chronological order (the order splits are actually
+  // reached in a real run), not appended by category-type then patched -
+  // confirmed live that approach left Olmec stranded AFTER Hell Entry/
+  // Hell (5-3) for Max Hell categories specifically (Olmec was always
+  // pushed last for any Max category, with no regard for Hell splits
+  // then getting appended after it), when Olmec always finishes well
+  // before Hell is ever reached, max category or not.
   function splitKeysFor(category) {
-    const keys = ["Mines", "Jungle", "Ice Caves"];
-    // "Big Money" additionally routes through City of Gold, reached from Ice Caves.
-    if (category === "Big Money") keys.push("City of Gold");
-    // Every category passes through Temple (4-3) just before Olmec.
-    keys.push("Temple (4-3)");
-    // "Max" categories additionally track the Worm and Mothership
-    // encounters - Olmec is listed last for these specifically (everyone
-    // else keeps Olmec right after Temple (4-3), its normal run order).
     const isMax = isMaxCategory(category);
-    if (!isMax) keys.push("Olmec");
-    // Hell categories (anything with "hell", "eggplant", or "chain" in the
-    // name) continue past Olmec into Hell itself - Hell Entry marks first
-    // stepping into World 5, then Hell (5-3) is the Yama fight further in.
-    if (isHellCategory(category)) keys.push("Hell Entry", "Hell (5-3)");
-    if (SEPARATE_YAMA_CATEGORIES.has(category)) keys.push("Yama");
-    if (isMax) keys.push("Worm", "Mothership", "Olmec");
+    const keys = ["Mines"];
+    // Worm defaults to right after Jungle - that covers the Ice Caves
+    // route (its actual position) AND whenever the route isn't known yet
+    // (not a live Max run, too early in one, or a Max Hell category -
+    // maxWormVariant is never resolved for those), which is a much better
+    // guess than the old third fallback position way down near Olmec ever
+    // was. Only a POSITIVELY confirmed Jungle worm (maxWormVariant
+    // "jungle" - see where it's resolved in ws.onmessage's "Category"
+    // branch) moves it earlier, to before Jungle instead.
+    if (isMax && maxWormVariant === "jungle") keys.push("Worm");
+    keys.push("Jungle");
+    if (isMax && maxWormVariant !== "jungle") keys.push("Worm");
+    // Mothership is always reached from within Ice Caves, right before
+    // that area actually finishes - unlike Worm, that part doesn't depend
+    // on the route at all.
+    if (isMax) keys.push("Mothership");
+    keys.push("Ice Caves");
+    // "Big Money" additionally routes through City of Gold - always found
+    // within Temple (World 4), never Ice Caves (see liveSplitsFromRunState).
+    if (category === "Big Money") keys.push("City of Gold");
+    // Every category passes through Temple (4-3) just before Olmec -
+    // Olmec always belongs right after it, even for hell/chain categories
+    // where Hell Entry/Hell (5-3)/Yama come later still.
+    keys.push("Temple (4-3)");
+    keys.push("Olmec");
+    // Hell categories (anything with "hell", "eggplant", "shield",
+    // "bookskip", or "chain" in the name - see isHellCategory) continue
+    // past Olmec into Hell itself - Hell Entry marks first stepping into
+    // World 5, then Hell (5-3) is the cumulative checkpoint at the Yama
+    // fight, with Yama itself (the fight's own duration, like Olmec) now
+    // tracked for every hell category/variant, not just the two in
+    // SEPARATE_YAMA_CATEGORIES (that set is still used elsewhere - see
+    // loadPBs' own migration - for recognizing a hell category's OLDER,
+    // differently-meant "Yama" field, which predates this one and isn't
+    // the same thing).
+    if (isHellCategory(category)) keys.push("Hell Entry", "Hell (5-3)", "Yama");
     return keys;
   }
 
@@ -2022,6 +2512,7 @@
   const rankText = document.getElementById("rankText");
   const dateText = document.getElementById("dateText");
   const runCompleteText = document.getElementById("runCompleteText");
+  const levelBreakdownColumns = document.getElementById("levelBreakdownColumns");
   const splitsBlock = document.getElementById("splitsBlock");
   const splitsGrid = document.getElementById("splitsGrid");
   const splitsHeaderRow = document.getElementById("splitsHeaderRow");
@@ -2055,6 +2546,18 @@
     currentProfileName.textContent = syncedUsername || "None";
   }
   updateCurrentProfileDisplay();
+  const sessionPbBanner = document.getElementById("sessionPbBanner");
+  const sessionPbBannerText = document.getElementById("sessionPbBannerText");
+  const reviewSessionPbsBtn = document.getElementById("reviewSessionPbsBtn");
+  const sessionPbReviewSection = document.getElementById("sessionPbReviewSection");
+  const sessionPbReviewList = document.getElementById("sessionPbReviewList");
+  // Runs completed THIS page load that beat their category's stored PB
+  // (see maybeRecordSessionPb) - resets on reload, same scope as
+  // "during your play session" implies. Each entry: {category, time
+  // (precise "M:SS.mmm" string, same shape as pb.time), splits (full
+  // thousandths precision), levelBreakdown (deep-cloned run_state.areas
+  // at the moment it completed), detectedAt}.
+  let sessionPbs = [];
   const pbGlance = document.getElementById("pbGlance");
   const pbGlanceFilterRow = document.getElementById("pbGlanceFilterRow");
   const pbGlanceHint = document.getElementById("pbGlanceHint");
@@ -2106,6 +2609,7 @@
   const obsLivesplitDeltaSelect = document.getElementById("obsLivesplitDeltaSelect");
   const obsCategoryCheck = document.getElementById("obsCategoryCheck");
   const obsPbCheck = document.getElementById("obsPbCheck");
+  const obsWrTimeCheck = document.getElementById("obsWrTimeCheck");
   const obsRankCheck = document.getElementById("obsRankCheck");
   const obsRatingCheck = document.getElementById("obsRatingCheck");
   const obsDateCheck = document.getElementById("obsDateCheck");
@@ -2114,9 +2618,11 @@
   const compactCurrentSplitsCheck = document.getElementById("compactCurrentSplitsCheck");
   const compactCategoryCheck = document.getElementById("compactCategoryCheck");
   const compactPbCheck = document.getElementById("compactPbCheck");
+  const compactShowPbDeltaCheck = document.getElementById("compactShowPbDeltaCheck");
   const compactRankCheck = document.getElementById("compactRankCheck");
   const compactRatingCheck = document.getElementById("compactRatingCheck");
   const compactDateCheck = document.getElementById("compactDateCheck");
+  const compactLevelBreakdownCheck = document.getElementById("compactLevelBreakdownCheck");
 
   const LINK_OPTS_KEY = "pbTracker.linkOpts";
   function loadLinkOpts() {
@@ -2127,15 +2633,17 @@
     }
   }
   const linkOpts = loadLinkOpts();
-  // OBS Preview defaults to Category + PB + PB Splits at full opacity - a
-  // minimal stream overlay out of the box. Compact View defaults to
+  // OBS Preview defaults to Category + PB + PB Splits, with the
+  // autosplitter (Show PB Delta/Animations/Full opacity on run complete
+  // included) already on out of the box. Compact View defaults to
   // everything on, since that's your own glance view, not something
   // shown to viewers.
   obsSplitsCheck.checked = linkOpts.obsSplits !== false;
   obsWrSplitsCheck.checked = !!linkOpts.obsWrSplits;
-  obsCurrentSplitsCheck.checked = !!linkOpts.obsCurrentSplits;
+  obsCurrentSplitsCheck.checked = linkOpts.obsCurrentSplits !== false;
   obsCategoryCheck.checked = linkOpts.obsCategory !== false;
   obsPbCheck.checked = linkOpts.obsPb !== false;
+  obsWrTimeCheck.checked = !!linkOpts.obsWrTime;
   obsRankCheck.checked = !!linkOpts.obsRank;
   obsRatingCheck.checked = !!linkOpts.obsRating;
   obsDateCheck.checked = !!linkOpts.obsDate;
@@ -2144,20 +2652,20 @@
   compactCurrentSplitsCheck.checked = linkOpts.compactCurrentSplits !== false;
   compactCategoryCheck.checked = linkOpts.compactCategory !== false;
   compactPbCheck.checked = linkOpts.compactPb !== false;
+  compactShowPbDeltaCheck.checked = linkOpts.compactShowPbDelta !== false;
   compactRankCheck.checked = linkOpts.compactRank !== false;
   compactRatingCheck.checked = linkOpts.compactRating !== false;
   compactDateCheck.checked = linkOpts.compactDate !== false;
+  compactLevelBreakdownCheck.checked = linkOpts.compactLevelBreakdown !== false;
   obsTextOpacityInput.value = linkOpts.obsTextOpacity != null ? linkOpts.obsTextOpacity : 100;
-  obsFlashOpacityCheck.checked = !!linkOpts.obsFlashOpacity;
-  // Matches livesplitAnimations/etc.'s own URL-param defaults above -
-  // Animations/PB Delta/WR Delta off, Include IL Splits on.
-  obsLivesplitAnimationsCheck.checked = !!linkOpts.obsLivesplitAnimations;
-  obsLivesplitShowPbDeltaCheck.checked = !!linkOpts.obsLivesplitShowPbDelta;
+  obsFlashOpacityCheck.checked = linkOpts.obsFlashOpacity !== false;
+  obsLivesplitAnimationsCheck.checked = linkOpts.obsLivesplitAnimations !== false;
+  obsLivesplitShowPbDeltaCheck.checked = linkOpts.obsLivesplitShowPbDelta !== false;
   obsLivesplitShowWrDeltaCheck.checked = !!linkOpts.obsLivesplitShowWrDelta;
   obsLivesplitIncludeIlCheck.checked = linkOpts.obsLivesplitIncludeIl !== false;
   obsLivesplitHideMinuteZeroCheck.checked = !!linkOpts.obsLivesplitHideMinuteZero;
   obsLivesplitAccuracySelect.value = normalizeLivesplitPrecision(linkOpts.obsLivesplitAccuracy);
-  obsLivesplitDeltaSelect.value = normalizeLivesplitPrecision(linkOpts.obsLivesplitDelta);
+  obsLivesplitDeltaSelect.value = normalizeLivesplitPrecision(linkOpts.obsLivesplitDelta, "tenths");
 
   function refreshLinks() {
     obsLinkInput.value =
@@ -2166,6 +2674,7 @@
       `&currentsplits=${obsCurrentSplitsCheck.checked ? 1 : 0}` +
       `&category=${obsCategoryCheck.checked ? 1 : 0}` +
       `&pb=${obsPbCheck.checked ? 1 : 0}` +
+      `&wrtime=${obsWrTimeCheck.checked ? 1 : 0}` +
       `&rank=${obsRankCheck.checked ? 1 : 0}` +
       `&rating=${obsRatingCheck.checked ? 1 : 0}` +
       `&date=${obsDateCheck.checked ? 1 : 0}` +
@@ -2184,9 +2693,11 @@
       `&currentsplits=${compactCurrentSplitsCheck.checked ? 1 : 0}` +
       `&category=${compactCategoryCheck.checked ? 1 : 0}` +
       `&pb=${compactPbCheck.checked ? 1 : 0}` +
+      `&livesplitshowpbdelta=${compactShowPbDeltaCheck.checked ? 1 : 0}` +
       `&rank=${compactRankCheck.checked ? 1 : 0}` +
       `&rating=${compactRatingCheck.checked ? 1 : 0}` +
-      `&date=${compactDateCheck.checked ? 1 : 0}`;
+      `&date=${compactDateCheck.checked ? 1 : 0}` +
+      `&levelbreakdown=${compactLevelBreakdownCheck.checked ? 1 : 0}`;
   }
   refreshLinks();
 
@@ -2197,6 +2708,7 @@
       obsCurrentSplits: obsCurrentSplitsCheck.checked,
       obsCategory: obsCategoryCheck.checked,
       obsPb: obsPbCheck.checked,
+      obsWrTime: obsWrTimeCheck.checked,
       obsRank: obsRankCheck.checked,
       obsRating: obsRatingCheck.checked,
       obsDate: obsDateCheck.checked,
@@ -2205,9 +2717,11 @@
       compactCurrentSplits: compactCurrentSplitsCheck.checked,
       compactCategory: compactCategoryCheck.checked,
       compactPb: compactPbCheck.checked,
+      compactShowPbDelta: compactShowPbDeltaCheck.checked,
       compactRank: compactRankCheck.checked,
       compactRating: compactRatingCheck.checked,
       compactDate: compactDateCheck.checked,
+      compactLevelBreakdown: compactLevelBreakdownCheck.checked,
       obsTextOpacity: obsTextOpacityInput.value,
       obsFlashOpacity: obsFlashOpacityCheck.checked,
       obsLivesplitAnimations: obsLivesplitAnimationsCheck.checked,
@@ -2221,13 +2735,13 @@
   }
 
   [
-    obsSplitsCheck, obsWrSplitsCheck, obsCurrentSplitsCheck, obsCategoryCheck, obsPbCheck,
+    obsSplitsCheck, obsWrSplitsCheck, obsCurrentSplitsCheck, obsCategoryCheck, obsPbCheck, obsWrTimeCheck,
     obsRankCheck, obsRatingCheck, obsDateCheck, obsFlashOpacityCheck,
     obsLivesplitAnimationsCheck, obsLivesplitShowPbDeltaCheck, obsLivesplitShowWrDeltaCheck,
     obsLivesplitIncludeIlCheck, obsLivesplitHideMinuteZeroCheck,
     obsLivesplitAccuracySelect, obsLivesplitDeltaSelect,
     compactSplitsCheck, compactWrSplitsCheck, compactCurrentSplitsCheck, compactCategoryCheck, compactPbCheck,
-    compactRankCheck, compactRatingCheck, compactDateCheck,
+    compactShowPbDeltaCheck, compactRankCheck, compactRatingCheck, compactDateCheck, compactLevelBreakdownCheck,
   ].forEach((el) => {
     el.addEventListener("change", () => {
       saveLinkOpts();
@@ -2236,7 +2750,15 @@
     });
   });
 
+  // Swapped in over the clipboard icon briefly after a click - same
+  // "Copied!" feedback as before, just a checkmark glyph now that the
+  // button itself is icon-only instead of a text label.
+  const COPIED_CHECK_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<polyline points="20 6 9 17 4 12"></polyline></svg>';
+
   function wireCopyButton(button, input) {
+    const originalHTML = button.innerHTML;
     button.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(input.value);
@@ -2246,11 +2768,10 @@
         input.select();
         input.setSelectionRange(0, input.value.length);
       }
-      const original = button.textContent;
-      button.textContent = "Copied!";
+      button.innerHTML = COPIED_CHECK_SVG;
       button.classList.add("copied");
       setTimeout(() => {
-        button.textContent = original;
+        button.innerHTML = originalHTML;
         button.classList.remove("copied");
       }, 1500);
     });
@@ -2886,7 +3407,267 @@
     pbGlanceFilterRow.classList.add("hidden");
     pbGlanceHint.classList.add("hidden");
     togglePbGlanceBtn.textContent = "Show PBs";
+    sessionPbReviewSection.classList.add("hidden");
   }
+
+  // Shared by the Session PBs review cards and the "View Level
+  // Breakdown?" checkbox under Show PBs' own splits editor - a deep-clone
+  // of a completed run's run_state.areas (see maybeRecordSessionPb),
+  // rendered the same per-level way the compact overlay's own debug view
+  // used to (since removed from there - see its own old comments for why
+  // skipped/Mothership/City of Gold need this same special-casing).
+  // Per-area name + accent color, in run order - shared by the compact
+  // overlay's own columnar level breakdown (see renderLevelBreakdownColumns)
+  // and anywhere else an area needs a human name/color pairing.
+  const AREA_INFO = [
+    { name: "Mines", color: "#c17a3d" },
+    { name: "Jungle", color: "#4caf50" },
+    { name: "Ice Caves", color: "#4a90d9" },
+    { name: "Temple", color: "#9e9e9e" },
+    { name: "Hell", color: "#e05252" },
+  ];
+
+  // Shared by renderLevelBreakdownInto and renderLevelBreakdownColumns -
+  // Ice Caves' own extra slots 4-5 are Mothership's 2 levels, not real
+  // "3-5"/"3-6" ground levels; 4-3 (area index 3, slot 2) is only City of
+  // Gold on hell runs, the label switches back to "4-3" the moment the
+  // category does too.
+  function levelSlotLabel(areaIdx, slot, category) {
+    if (areaIdx === 2 && slot === 4) return "Mothership";
+    if (areaIdx === 2 && slot === 5) return "3-4.2";
+    if (areaIdx === 3 && slot === 2 && isHellCategory(category)) return "City of Gold";
+    return `${areaIdx + 1}-${slot + 1}`;
+  }
+
+  function renderLevelBreakdownInto(container, areas, category) {
+    container.innerHTML = "";
+    if (!areas || !areas.some((a) => a)) {
+      container.textContent = "No level breakdown saved for this PB.";
+      return;
+    }
+    for (let areaIdx = 0; areaIdx < areas.length; areaIdx++) {
+      const area = areas[areaIdx];
+      if (!area || !Array.isArray(area.levels)) continue;
+      const slotCount = area.levels.slice(4).some((lv) => lv) ? 6 : 4;
+      for (let slot = 0; slot < slotCount; slot++) {
+        const lv = area.levels[slot];
+        if (lv && lv.skipped) continue;
+        const label = levelSlotLabel(areaIdx, slot, category);
+        const row = document.createElement("div");
+        row.className = "level-breakdown-row" + (lv ? "" : " missing");
+        row.textContent = lv ? `${label}: ${(lv.time / 1000).toFixed(2)}s` : `${label}: MISSING`;
+        container.appendChild(row);
+      }
+    }
+  }
+
+  // Compact-overlay-only, opt-in (see compactLevelBreakdownCheck) - one
+  // column per area, colored/titled with AREA_INFO, instead of
+  // renderLevelBreakdownInto's single flat scrolling list (that one's
+  // for the dashboard's own Session PBs/Show PBs panels, where space
+  // isn't at as much of a premium as a stream overlay's). A column
+  // always shows for every area in AREA_INFO, even one the run hasn't
+  // reached yet - its rows just read "—" - so the layout doesn't jump
+  // around as areas complete. Hell is the exception: it only ever exists
+  // on a hell category, so its column is skipped entirely otherwise
+  // instead of sitting there empty.
+  function renderLevelBreakdownColumns(container, runState, category) {
+    container.innerHTML = "";
+    const areas = runState && Array.isArray(runState.areas) ? runState.areas : [];
+    const isHell = isHellCategory(category);
+    for (let areaIdx = 0; areaIdx < AREA_INFO.length; areaIdx++) {
+      if (AREA_INFO[areaIdx].name === "Hell" && !isHell) continue;
+      const info = AREA_INFO[areaIdx];
+      const area = areas[areaIdx];
+      const column = document.createElement("div");
+      column.className = "level-breakdown-column";
+      column.style.setProperty("--area-color", info.color);
+      const header = document.createElement("div");
+      header.className = "level-breakdown-column-header";
+      header.textContent = info.name;
+      column.appendChild(header);
+      const levels = area && Array.isArray(area.levels) ? area.levels : [];
+      const slotCount = levels.slice(4).some((lv) => lv) ? 6 : 4;
+      for (let slot = 0; slot < slotCount; slot++) {
+        const lv = levels[slot];
+        if (lv && lv.skipped) continue;
+        const label = levelSlotLabel(areaIdx, slot, category);
+        const row = document.createElement("div");
+        row.className = "level-breakdown-row" + (lv ? "" : " missing");
+        row.textContent = lv ? `${label}: ${(lv.time / 1000).toFixed(2)}s` : `${label}: —`;
+        column.appendChild(row);
+      }
+      container.appendChild(column);
+    }
+  }
+
+  // Called once per freshly-captured completedRunSnapshot (see
+  // renderDisplay) - if that completion actually beat the category's
+  // stored PB (same .ahead check the "New PB!" banner itself uses, so
+  // this and that always agree), record it for review instead of relying
+  // on the player to catch and save it manually mid-session.
+  function maybeRecordSessionPb(snapshot, category, runState) {
+    if (!category) return;
+    const pb = pbs[category];
+    const completion = runCompletionCell(snapshot, category, pb);
+    if (!completion || !completion.ahead) return;
+    sessionPbs.push({
+      category,
+      time: completion.time,
+      splits: liveSplitsFromRunState(runState, "thousandths") || {},
+      levelBreakdown: runState && Array.isArray(runState.areas) ? JSON.parse(JSON.stringify(runState.areas)) : null,
+      detectedAt: Date.now(),
+    });
+    renderSessionPbBanner();
+    if (!sessionPbReviewSection.classList.contains("hidden")) renderSessionPbReview();
+  }
+
+  function renderSessionPbBanner() {
+    if (sessionPbs.length === 0) {
+      sessionPbBanner.classList.add("hidden");
+      return;
+    }
+    sessionPbBannerText.textContent =
+      `We have detected (${sessionPbs.length}) PBs during your ` +
+      "play session. Would you like to review them?";
+    sessionPbBanner.classList.remove("hidden");
+  }
+
+  // Called after a save/dismiss instead of renderSessionPbReview directly -
+  // once the last entry is handled there's nothing left to review, so the
+  // whole panel closes itself immediately instead of sitting open showing
+  // an empty "go set one!" message. Only used for a removal already in
+  // progress - opening the panel fresh (reviewSessionPbsBtn) still shows
+  // that empty state normally, rather than refusing to open at all.
+  function closeSessionPbReviewIfEmpty() {
+    if (sessionPbs.length === 0) {
+      sessionPbReviewSection.classList.add("hidden");
+    } else {
+      renderSessionPbReview();
+    }
+  }
+
+  function renderSessionPbReview() {
+    sessionPbReviewList.innerHTML = "";
+    if (sessionPbs.length === 0) {
+      sessionPbReviewList.textContent = "No session PBs right now - go set one!";
+      return;
+    }
+    // Oldest first - same order they actually happened in during the
+    // session. Entries are already pushed in detection order (see
+    // maybeRecordSessionPb), so this is mostly a safety net against that
+    // ever changing (e.g. if dismiss/save logic is reworked later).
+    const sorted = sessionPbs.slice().sort((a, b) => a.detectedAt - b.detectedAt);
+    for (const entry of sorted) {
+      const card = document.createElement("div");
+      card.className = "session-pb-card";
+
+      // Shared by both the full "Dismiss" action button and the small
+      // top-right X - same confirm() and removal logic either way, just
+      // two different-sized entry points to it.
+      const dismissEntry = () => {
+        if (!confirm(`Dismiss the detected PB for "${entry.category}" without saving it?`)) return;
+        const i = sessionPbs.indexOf(entry);
+        if (i !== -1) sessionPbs.splice(i, 1);
+        renderSessionPbBanner();
+        closeSessionPbReviewIfEmpty();
+      };
+
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "session-pb-close-btn";
+      closeBtn.textContent = "✕";
+      closeBtn.title = "Dismiss";
+      closeBtn.setAttribute("aria-label", "Dismiss");
+      closeBtn.addEventListener("click", dismissEntry);
+      card.appendChild(closeBtn);
+
+      const header = document.createElement("div");
+      header.className = "session-pb-card-header";
+      const oldTime = pbs[entry.category] && pbs[entry.category].time;
+      const catStrong = document.createElement("strong");
+      catStrong.textContent = entry.category;
+      header.appendChild(catStrong);
+      header.appendChild(document.createTextNode(" - "));
+      const newTimeSpan = document.createElement("span");
+      newTimeSpan.className = "session-pb-new-time";
+      newTimeSpan.textContent = entry.time;
+      header.appendChild(newTimeSpan);
+      header.appendChild(document.createTextNode(" "));
+      const oldSpan = document.createElement("span");
+      oldSpan.className = "session-pb-old";
+      oldSpan.textContent = oldTime ? `(was ${oldTime})` : "(no previous PB)";
+      header.appendChild(oldSpan);
+      card.appendChild(header);
+
+      const timeOfDay = document.createElement("div");
+      timeOfDay.className = "session-pb-timestamp";
+      const detectedDate = new Date(entry.detectedAt);
+      timeOfDay.textContent =
+        `Completed at ${detectedDate.toLocaleTimeString()} on ${detectedDate.toLocaleDateString()}`;
+      card.appendChild(timeOfDay);
+
+      const actions = document.createElement("div");
+      actions.className = "session-pb-actions";
+
+      const saveBtn = document.createElement("button");
+      saveBtn.className = "copy-btn";
+      saveBtn.textContent = "Save PB & Splits";
+      saveBtn.addEventListener("click", () => {
+        pbs[entry.category] = {
+          ...pbs[entry.category],
+          time: entry.time,
+          splits: entry.splits,
+          levelBreakdown: entry.levelBreakdown,
+          synced: false,
+        };
+        savePBs(pbs);
+        const i = sessionPbs.indexOf(entry);
+        if (i !== -1) sessionPbs.splice(i, 1);
+        renderSessionPbBanner();
+        closeSessionPbReviewIfEmpty();
+        renderPBGlance();
+        renderDisplay();
+      });
+      actions.appendChild(saveBtn);
+
+      const breakdownBtn = document.createElement("button");
+      breakdownBtn.className = "copy-btn";
+      breakdownBtn.textContent = "View Level Breakdown";
+      const breakdownBody = document.createElement("div");
+      breakdownBody.className = "level-breakdown hidden";
+      breakdownBtn.addEventListener("click", () => {
+        const isHidden = breakdownBody.classList.contains("hidden");
+        if (isHidden) {
+          renderLevelBreakdownInto(breakdownBody, entry.levelBreakdown, entry.category);
+          breakdownBody.classList.remove("hidden");
+          breakdownBtn.textContent = "Hide Level Breakdown";
+        } else {
+          breakdownBody.classList.add("hidden");
+          breakdownBtn.textContent = "View Level Breakdown";
+        }
+      });
+      actions.appendChild(breakdownBtn);
+
+      const dismissBtn = document.createElement("button");
+      dismissBtn.className = "copy-btn";
+      dismissBtn.textContent = "Dismiss";
+      dismissBtn.addEventListener("click", dismissEntry);
+      actions.appendChild(dismissBtn);
+
+      card.appendChild(actions);
+      card.appendChild(breakdownBody);
+      sessionPbReviewList.appendChild(card);
+    }
+  }
+
+  reviewSessionPbsBtn.addEventListener("click", () => {
+    const wasOpen = !sessionPbReviewSection.classList.contains("hidden");
+    closeAllPbPanels();
+    if (!wasOpen) {
+      sessionPbReviewSection.classList.remove("hidden");
+      renderSessionPbReview();
+    }
+  });
 
   // Both Olmec choices start blank (see the form's own "Choose..." default
   // option) - Estimate stays disabled until both are actually picked.
@@ -3035,6 +3816,14 @@
     }
   });
 
+  // "Customize" buttons (OBS Preview/LiveSplit Style Splitting/Personal
+  // Use Only Link) each just reveal their own very next element - the
+  // less-essential checkboxes for that section - rather than needing a
+  // named handler per section.
+  document.querySelectorAll(".customize-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => btn.nextElementSibling.classList.toggle("hidden"));
+  });
+
   // Re-scrapes mossranking.com/spelunky-hd/cats for every category's
   // current WR holder + time (see RefreshWorldRecords in server.py) and
   // adopts the result live - the response lands in ws.onmessage's
@@ -3064,12 +3853,21 @@
   // "nothing to show here yet." When ahead is non-null (an achieved time
   // being compared against a reference), the time itself is colored
   // LiveSplit-style (green "ahead", red "behind"), same as the delta that
-  // follows it. `pop`, when true, plays a one-shot scale animation on the
-  // whole cell - used for the single render where this split was just
-  // reached, so a result in a game where 5s is huge actually reads as one.
-  function buildSplitTimeCell(cell, extraClass, pop, includeDelta, hideZero) {
+  // follows it. `popElapsedMs`, when a number, plays the grow-then-settle
+  // animation (see @keyframes split-pop) for whatever's left of its 0.5s
+  // duration - this cell may be a brand new DOM node standing in for one
+  // that was mid-animation (see renderSplitRows' own listEl.innerHTML =
+  // "" and paintCorners' poppedSplitKeysByEl), so a NEGATIVE
+  // animation-delay seeks straight to the correct point instead of
+  // restarting from 0% - keeps the "grow then shrink back to original
+  // size" look continuous and smooth, landing at exactly the same size
+  // as every other split once it's done, even though a new render can
+  // land mid-animation every ~50ms.
+  function buildSplitTimeCell(cell, extraClass, popElapsedMs, includeDelta, hideZero) {
+    const pop = popElapsedMs != null;
     const el = document.createElement("span");
     el.className = "split-time" + (extraClass ? " " + extraClass : "") + (pop ? " split-pop" : "");
+    if (pop) el.style.animationDelay = `-${popElapsedMs}ms`;
     if (cell && cell.time) {
       const timeNode = document.createElement("span");
       if (cell.ahead != null) {
@@ -3116,7 +3914,10 @@
     for (const key of entries) {
       const row = document.createElement("div");
       row.className = "split-row";
-      const pop = !!(newlyReachedKeys && newlyReachedKeys.has(key));
+      // undefined when this key isn't (still) popping - see
+      // buildSplitTimeCell for how a defined elapsed value resumes the
+      // animation at the right point instead of restarting it.
+      const popElapsedMs = newlyReachedKeys ? newlyReachedKeys.get(key) : undefined;
       // No visible time column ever carries its own trailing delta - each
       // one shifts one slot to the left instead: whichever column is
       // shown FIRST (PB, else WR) has its delta moved into the name
@@ -3139,14 +3940,14 @@
       if (nameDelta) name.appendChild(nameDelta);
       row.appendChild(name);
       if (showPbCol) {
-        const pbTimeEl = buildSplitTimeCell(pbCell, null, pop, false, hideZero);
+        const pbTimeEl = buildSplitTimeCell(pbCell, null, popElapsedMs, false, hideZero);
         if (crossDelta) {
           pbTimeEl.classList.add("has-cross-delta");
           pbTimeEl.appendChild(crossDelta);
         }
         row.appendChild(pbTimeEl);
       }
-      if (showWrCol) row.appendChild(buildSplitTimeCell(wrCell, "wr-time", pop, false, hideZero));
+      if (showWrCol) row.appendChild(buildSplitTimeCell(wrCell, "wr-time", popElapsedMs, false, hideZero));
       listEl.appendChild(row);
     }
     return entries.length;
@@ -3158,7 +3959,7 @@
   // a second hand-maintained copy that can drift out of sync with it.
   function paintCorners(el, opts) {
     const {
-      showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showRank, showRating, showDate,
+      showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
       // Defaults are the real live state (for the actual overlay, via
       // renderDisplay below) - renderPreview instead passes fixed sample
       // data, so the dashboard's OBS Live Preview can show what every
@@ -3224,20 +4025,16 @@
     const havePb = !!(pb && pb.time);
     const havePbSplits = !!(pb && pb.splits && Object.keys(pb.splits).length);
 
-    // "Completed Run!" + delta vs PB, frozen at the moment the run
-    // actually reached its own finish line (see completedRunSnapshot/
-    // nextCompletedRunSnapshot) - same data dependency as the Current
-    // column, so gated the same way.
+    // "Completed Run!", frozen at the moment the run actually reached its
+    // own finish line (see completedRunSnapshot/nextCompletedRunSnapshot)
+    // - same data dependency as the Current column, so gated the same
+    // way. completion.ahead/deltaText are still computed (see
+    // runCompletionCell) since "New PB!" below still needs .ahead - just
+    // not rendered here anymore.
     const completion = showCurrentSplits ? runCompletionCell(snapshot, lookupCategory, pb) : null;
     el.runCompleteText.innerHTML = "";
     if (completion) {
       el.runCompleteText.appendChild(document.createTextNode("Completed Run! " + completion.time));
-      if (completion.deltaText) {
-        const delta = document.createElement("span");
-        delta.className = "split-delta " + (completion.ahead ? "ahead" : "behind");
-        delta.textContent = " " + completion.deltaText;
-        el.runCompleteText.appendChild(delta);
-      }
     }
     // "New PB!" + the precise achieved time, under the "PB:" line - only
     // when this completed run actually beat the stored PB (ahead is null,
@@ -3278,10 +4075,16 @@
     // two separate ones, so both columns are resolved together before a
     // single render pass - each column only turns on when its checkbox is
     // on AND it actually has data for this category.
+    // wr itself is needed for either the splits grid OR the standalone
+    // "WR Time?" line below, independently of each other - wrScaled (the
+    // actual estimated/overridden split breakdown) is only ever needed
+    // for the former.
     let wr = null;
     let wrScaled = null;
-    if (showWrSplits) {
+    if (showWrSplits || showWrTime) {
       wr = worldRecordsSource[lookupCategory];
+    }
+    if (showWrSplits) {
       const wrEstimated = wr
         ? computeTargetSplits(lookupCategory, wr.time, {
             assumeWrOlmec: true, wrOverrides: wrSplitsSource[lookupCategory],
@@ -3305,23 +4108,37 @@
     // PB column - there's no real baseline to compare live progress
     // against yet, for either column.
     const liveSplits = showCurrentSplits && havePbSplits ? liveSplitsFromRunState(runState, accuracy) : null;
-    // Figure out which split keys just landed on THIS render, so their
-    // cell can play the pop animation exactly once (see
-    // poppedSplitKeysByEl above) - unless Animations? is off, in which
-    // case nothing ever gets added to newlyReachedKeys at all.
-    let poppedSplitKeys = poppedSplitKeysByEl.get(el);
-    if (!poppedSplitKeys) {
-      poppedSplitKeys = new Set();
-      poppedSplitKeysByEl.set(el, poppedSplitKeys);
+    // Full-precision parallel copy, used ONLY for delta math (see
+    // comparisonSplitCell) - never for display text. Confirmed live: the
+    // delta was always coming out as a flat ".0", even with Delta
+    // Accuracy set to tenths/hundredths, because the subtraction itself
+    // was done on liveSplits/the PB's own value AFTER each had already
+    // been rounded down to the (separate) Accuracy setting - almost
+    // always whole seconds, so there was no sub-second difference left
+    // to show by the time deltaAccuracy's own formatting ever saw it.
+    const livePreciseSplits = showCurrentSplits && havePbSplits ? liveSplitsFromRunState(runState, "thousandths") : null;
+    // Figure out which split keys landed recently enough to still be
+    // mid-pop on THIS render (see poppedSplitKeysByEl/SPLIT_POP_DURATION_MS
+    // above) - unless Animations? is off, in which case nothing ever gets
+    // added to newlyReachedKeys at all.
+    let poppedAt = poppedSplitKeysByEl.get(el);
+    if (!poppedAt) {
+      poppedAt = new Map();
+      poppedSplitKeysByEl.set(el, poppedAt);
     }
-    if (!liveSplits) poppedSplitKeys.clear();
-    const newlyReachedKeys = new Set();
+    if (!liveSplits) poppedAt.clear();
+    const now = performance.now();
+    // key -> ms elapsed since it first popped, only for keys still inside
+    // the animation window - buildSplitTimeCell uses this to resume the
+    // pop animation at the right point on a freshly rebuilt cell (see
+    // renderSplitRows' own listEl.innerHTML = "" above) rather than
+    // restarting or abruptly skipping its return to normal size.
+    const newlyReachedKeys = new Map();
     if (liveSplits) {
       for (const key of Object.keys(liveSplits)) {
-        if (!poppedSplitKeys.has(key)) {
-          if (animations) newlyReachedKeys.add(key);
-          poppedSplitKeys.add(key);
-        }
+        if (!poppedAt.has(key)) poppedAt.set(key, now);
+        const elapsed = now - poppedAt.get(key);
+        if (animations && elapsed < SPLIT_POP_DURATION_MS) newlyReachedKeys.set(key, elapsed);
       }
     }
     // Having a PB TIME alone isn't enough for the PB column - a category
@@ -3335,9 +4152,13 @@
       ? renderSplitRows(
           el.splitsList, lookupCategory,
           showPbCol, (k) => comparisonSplitCell(
-            roundStoredSplitToAccuracy(splitValue(pb, k), accuracy), liveSplits && liveSplits[k], deltaAccuracy, showPbDelta
+            roundStoredSplitToAccuracy(splitValue(pb, k), accuracy), liveSplits && liveSplits[k], deltaAccuracy, showPbDelta,
+            splitValue(pb, k), livePreciseSplits && livePreciseSplits[k]
           ),
-          showWrCol, (k) => comparisonSplitCell(wrScaled && wrScaled[k], liveSplits && liveSplits[k], deltaAccuracy, showWrDelta),
+          showWrCol, (k) => comparisonSplitCell(
+            wrScaled && wrScaled[k], liveSplits && liveSplits[k], deltaAccuracy, showWrDelta,
+            wrScaled && wrScaled[k], livePreciseSplits && livePreciseSplits[k]
+          ),
           newlyReachedKeys, includeIl, hideZero
         )
       : 0;
@@ -3350,7 +4171,7 @@
     el.pbColLabel.style.display = showPbCol ? "" : "none";
     el.wrColLabel.style.display = showWrCol ? "" : "none";
     el.splitsHeaderRow.style.display = rowCount ? "" : "none";
-    if (showWrCol && rowCount) {
+    if (showWrTime && wr) {
       el.wrAttribution.textContent = `WR: ${wr.time} by ${wr.player}`;
       el.wrAttribution.style.display = "";
     } else {
@@ -3370,7 +4191,15 @@
     // Updated once per incoming message, before paintCorners (which just
     // reads whatever completedRunSnapshot currently holds) runs.
     const lookupCategory = currentCategory ? resolveCategoryForData(currentCategory) : null;
+    const prevCompletedRunSnapshot = completedRunSnapshot;
     completedRunSnapshot = nextCompletedRunSnapshot(completedRunSnapshot, lookupCategory, currentRunState);
+    // nextCompletedRunSnapshot only ever constructs a NEW object on the
+    // one render where a run's own completion is first captured (every
+    // other path returns the same reference, or null) - exactly the
+    // moment to check whether it just beat the stored PB.
+    if (completedRunSnapshot && completedRunSnapshot !== prevCompletedRunSnapshot) {
+      maybeRecordSessionPb(completedRunSnapshot, lookupCategory, currentRunState);
+    }
     if (flashOpacity) {
       const opacity = completedRunSnapshot ? 1 : idleOpacityPct / 100;
       document.querySelectorAll(".corner").forEach((el) => {
@@ -3378,8 +4207,14 @@
       });
     }
     paintCorners(overlayEls, {
-      showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showRank, showRating, showDate,
+      showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
     });
+    if (showLevelBreakdown) {
+      levelBreakdownColumns.classList.add("shown");
+      renderLevelBreakdownColumns(levelBreakdownColumns, currentRunState, lookupCategory);
+    } else {
+      levelBreakdownColumns.classList.remove("shown");
+    }
     renderPreview();
   }
 
@@ -3438,6 +4273,7 @@
       showCurrentSplits: obsCurrentSplitsCheck.checked,
       showCategory: obsCategoryCheck.checked,
       showPb: obsPbCheck.checked,
+      showWrTime: obsWrTimeCheck.checked,
       showRank: obsRankCheck.checked,
       showRating: obsRatingCheck.checked,
       showDate: obsDateCheck.checked,
@@ -3563,12 +4399,63 @@
     }
   }
 
+  // A "Copy splits from <category>" row at the top of a category's splits
+  // editor - lets a category with no splits yet (or one you just want to
+  // reset) start from another category's already-entered times instead of
+  // retyping them all by hand. Copies the WHOLE source splits object
+  // as-is, not just the keys this category's own splitKeysFor uses -
+  // buildSplitsEditPanel only ever renders inputs for its own relevant
+  // keys anyway, so any extra copied keys just sit unused rather than
+  // being lost if the category's own split set later changes.
+  function buildCopySplitsRow(name) {
+    const row = document.createElement("div");
+    row.className = "copy-splits-row";
+
+    const select = document.createElement("select");
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Copy splits from...";
+    select.appendChild(placeholder);
+    const sourceNames = Object.keys(pbs)
+      .filter((other) => other !== name && pbs[other].splits && Object.keys(pbs[other].splits).length)
+      .sort((a, b) => a.localeCompare(b));
+    for (const sourceName of sourceNames) {
+      const option = document.createElement("option");
+      option.value = sourceName;
+      option.textContent = sourceName;
+      select.appendChild(option);
+    }
+
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "copy-splits-btn";
+    copyBtn.textContent = "Copy";
+    copyBtn.disabled = sourceNames.length === 0;
+    copyBtn.addEventListener("click", () => {
+      const sourceName = select.value;
+      if (!sourceName || !pbs[sourceName] || !pbs[sourceName].splits) return;
+      // Only ask to confirm when there's actually something to lose -
+      // copying into a category with no splits yet needs no prompt.
+      const hasExistingSplits = !!(pbs[name].splits && Object.keys(pbs[name].splits).length);
+      if (hasExistingSplits && !confirm(`Overwrite "${name}"'s splits with "${sourceName}"'s splits?`)) return;
+      pbs[name] = { ...pbs[name], splits: { ...pbs[sourceName].splits } };
+      savePBs(pbs);
+      renderPBGlance();
+      renderDisplay();
+    });
+
+    row.appendChild(select);
+    row.appendChild(copyBtn);
+    return row;
+  }
+
   // The splits editor for whichever ONE category's edit button was
   // clicked - editing many categories' splits at once was the main source
   // of visual clutter, so only one is ever open at a time.
   function buildSplitsEditPanel(name) {
     const panel = document.createElement("div");
     panel.className = "inline-splits-edit";
+    panel.appendChild(buildCopySplitsRow(name));
     const splits = pbs[name].splits || {};
     for (const key of splitKeysFor(name)) {
       const label = document.createElement("label");
@@ -3595,6 +4482,32 @@
       label.appendChild(input);
       panel.appendChild(label);
     }
+
+    // Only populated for a PB saved via the Session PBs review flow (see
+    // maybeRecordSessionPb/renderSessionPbReview) - a synced or
+    // hand-typed PB has no per-level data to show, handled gracefully by
+    // renderLevelBreakdownInto itself.
+    const breakdownRow = document.createElement("div");
+    breakdownRow.className = "level-breakdown-toggle-row";
+    const breakdownLabel = document.createElement("label");
+    const breakdownCheckbox = document.createElement("input");
+    breakdownCheckbox.type = "checkbox";
+    breakdownLabel.appendChild(breakdownCheckbox);
+    breakdownLabel.appendChild(document.createTextNode(" View Level Breakdown?"));
+    breakdownRow.appendChild(breakdownLabel);
+    const breakdownBody = document.createElement("div");
+    breakdownBody.className = "level-breakdown hidden";
+    breakdownCheckbox.addEventListener("change", () => {
+      if (breakdownCheckbox.checked) {
+        renderLevelBreakdownInto(breakdownBody, pbs[name].levelBreakdown, name);
+        breakdownBody.classList.remove("hidden");
+      } else {
+        breakdownBody.classList.add("hidden");
+      }
+    });
+    panel.appendChild(breakdownRow);
+    panel.appendChild(breakdownBody);
+
     return panel;
   }
 
@@ -3758,7 +4671,6 @@
         return;
       }
       if (msg.type === "Category" && msg.data) {
-        const previousCategory = currentCategory;
         currentCategory = msg.data.category;
         // "Death%" is HD Toolbox's category tracker reporting that the
         // run which just ended, ended in death - the Run Tracker (Session
@@ -3771,22 +4683,27 @@
           completedRunSnapshot = null;
           maxWormVariant = null;
         } else {
-          // See maxWormVariant above - resolved once, right as the
-          // category tracker switches TO a non-hell max category (not
-          // re-resolved on every later Category message for the same
-          // run), from whether Jungle was already completed at that exact
-          // instant.
           const isMaxNow = isMaxCategory(currentCategory) && !isHellCategory(currentCategory);
-          const wasMaxBefore = previousCategory
-            ? isMaxCategory(previousCategory) && !isHellCategory(previousCategory)
-            : false;
           if (!isMaxNow) {
             maxWormVariant = null;
-          } else if (!wasMaxBefore) {
-            const jungleArea = currentRunState && Array.isArray(currentRunState.areas)
-              ? currentRunState.areas[1]
-              : null;
-            maxWormVariant = jungleArea && jungleArea.completed ? "iceCaves" : "jungle";
+          } else if (maxWormVariant == null) {
+            // Resolved once per attempt (see maxWormVariant above for the
+            // rule and why it resets per-attempt, not per category
+            // change): if only Mines is done right now, the Worm fight
+            // is still ahead of you in Jungle; if Mines AND Jungle are
+            // both already done, it already happened in Ice Caves
+            // instead. If Mines itself isn't done yet, there's not
+            // enough run data to tell yet - stays null, and this same
+            // check runs again the next time a "Category" message
+            // reports Max while it's still unresolved.
+            const areas = currentRunState && Array.isArray(currentRunState.areas) ? currentRunState.areas : [];
+            const minesDone = !!(areas[0] && areas[0].completed);
+            const jungleDone = !!(areas[1] && areas[1].completed);
+            if (minesDone && jungleDone) {
+              maxWormVariant = "iceCaves";
+            } else if (minesDone) {
+              maxWormVariant = "jungle";
+            }
           }
         }
       } else if (msg.type === "Empty" || msg.type === "Failure") {
@@ -3803,6 +4720,16 @@
         currentRunState = currentCategory === "Death%"
           ? null
           : (msg.data && msg.data.data ? msg.data.data.run_state : null);
+        // A fresh attempt's run_state starts with every area null (same
+        // signal nextCompletedRunSnapshot uses) - reset so a stale
+        // variant from an earlier attempt in the same category streak
+        // can't leak into this new one before the "Category" branch
+        // above has anything fresh to resolve.
+        const freshRun = currentRunState && Array.isArray(currentRunState.areas)
+          && !currentRunState.areas.some((a) => a != null);
+        if (freshRun) {
+          maxWormVariant = null;
+        }
       } else if (msg.type === "PBsUpdated") {
         // Another connected client (typically your dashboard browser,
         // from this client's point of view as the OBS browser source)
