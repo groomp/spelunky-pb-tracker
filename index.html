@@ -2132,6 +2132,40 @@
     return CATEGORY_DATA_ALIASES[category.toLowerCase()] || category;
   }
 
+  // MossRanking isn't internally consistent about "No Teleporter" - the
+  // Main Speed group spells it out in full ("No Teleporter Chain Hell%"),
+  // but Misc/Pacifist/Bookskip categories abbreviate it instead ("No TP
+  // Pacifist Chain Hell%") - confirmed live: a WR for "No TP Pacifist
+  // Chain Hell%" exists and shows up fine in the dashboard's own glance
+  // list (keyed directly off WORLD_RECORDS, no live category involved),
+  // but never matched on the actual overlay/compact view, because
+  // whichever phrasing the live category tracker reports didn't match
+  // whichever phrasing that data happened to be stored under. Tries the
+  // category exactly as given first; only on a miss does it try the
+  // other phrasing, so an already-working lookup is never affected.
+  function lookupByCategory(dataSource, category) {
+    if (!dataSource || !category) return undefined;
+    if (dataSource[category] !== undefined) return dataSource[category];
+    let swapped = null;
+    if (category.includes("No Teleporter ")) {
+      swapped = category.replace("No Teleporter ", "No TP ");
+    } else if (category.includes("No TP ")) {
+      swapped = category.replace("No TP ", "No Teleporter ");
+    }
+    return swapped ? dataSource[swapped] : undefined;
+  }
+
+  // Display-only - the long multi-variant category names ("No Teleporter
+  // No Gold Pacifist Chain Hell%") are exactly the ones most likely to
+  // overflow or wrap awkwardly in the overlay/compact corner, so
+  // "No Teleporter" always reads as "No TP" there. Never applied to
+  // lookupCategory itself (see lookupByCategory just above, which already
+  // tries both phrasings) - this only touches what's actually painted on
+  // screen.
+  function shortenCategoryForDisplay(category) {
+    return category.replace(/No Teleporter/g, "No TP");
+  }
+
   // Olmec is stored as a duration ("33s") while Temple (4-3) is a cumulative
   // time ("2:21") - adding them gives the exact cumulative moment of
   // stepping into World 5, so Hell Entry never needs to be typed by hand.
@@ -3673,7 +3707,7 @@
   // on the player to catch and save it manually mid-session.
   function maybeRecordSessionPb(snapshot, category, runState) {
     if (!category) return;
-    const pb = pbs[category];
+    const pb = lookupByCategory(pbs, category);
     const completion = runCompletionCell(snapshot, category, pb);
     if (!completion || !completion.ahead) return;
     sessionPbs.push({
@@ -4192,9 +4226,9 @@
       el.categoryText.classList.add("category-wiggle");
     }
     lastShownCategoryByEl.set(el, category);
-    el.categoryText.textContent = category;
+    el.categoryText.textContent = shortenCategoryForDisplay(category);
     const lookupCategory = resolveCategoryForData(category);
-    const pb = pbsSource[lookupCategory];
+    const pb = lookupByCategory(pbsSource, lookupCategory);
     const havePb = !!(pb && pb.time);
     const havePbSplits = !!(pb && pb.splits && Object.keys(pb.splits).length);
 
@@ -4255,19 +4289,19 @@
     let wr = null;
     let wrScaled = null;
     if (showWrSplits || showWrTime) {
-      wr = worldRecordsSource[lookupCategory];
+      wr = lookupByCategory(worldRecordsSource, lookupCategory);
     }
     if (showWrSplits) {
       const wrEstimated = wr
         ? computeTargetSplits(lookupCategory, wr.time, {
-            assumeWrOlmec: true, wrOverrides: wrSplitsSource[lookupCategory],
+            assumeWrOlmec: true, wrOverrides: lookupByCategory(wrSplitsSource, lookupCategory),
             wormVariant: wormVariantFor(lookupCategory, "wr"),
           })
         : null;
       // Any hand-tweaked splits (see the WR Splits dashboard section) win
       // per-key over the live estimate, which still fills in whatever
       // wasn't touched.
-      const wrOverride = wrSplitsSource[lookupCategory];
+      const wrOverride = lookupByCategory(wrSplitsSource, lookupCategory);
       wrScaled = wrEstimated ? { ...wrEstimated, ...(wrOverride || {}) } : (wrOverride || null);
     }
     // Real measured splits for whatever run is actually in progress right
