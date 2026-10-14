@@ -545,6 +545,56 @@
     filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
   }
 
+  .version-badge {
+    font-size: 12px;
+    opacity: 0.5;
+    color: var(--mr-text);
+    font-family: Arial, sans-serif;
+    text-shadow: none;
+  }
+
+  .update-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  .update-banner.hidden {
+    display: none;
+  }
+
+  .update-banner-text {
+    font-size: 15px;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    color: #5cc85c;
+    text-shadow: none;
+  }
+
+  .update-apply-btn {
+    font-size: 13px;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(180deg, #5cc85c, #3fa23f);
+  }
+
+  .update-apply-btn:hover {
+    filter: brightness(1.08);
+  }
+
+  .update-apply-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+    filter: none;
+  }
+
   #currentProfileLine {
     margin: 0 0 20px;
     padding-bottom: 20px;
@@ -1487,6 +1537,15 @@
     font-style: italic;
   }
 
+  /* A smaller, muted hint sitting inline to the right of a button row,
+     instead of its own full paragraph below it - see the Refresh World
+     Records row. */
+  .inline-hint {
+    font-size: 0.78em;
+    color: var(--mr-muted);
+    font-style: italic;
+  }
+
   .how-to-steps {
     margin: 0;
     padding-left: 0;
@@ -1601,7 +1660,13 @@
 <button id="settingsToggle">PBs</button>
 
 <div id="settingsPanel">
-  <h1><img src="frog.ico" alt="" id="frogIcon">PB Tracker</h1>
+  <h1>
+    <img src="frog.ico" alt="" id="frogIcon">PB Tracker <span id="versionBadge" class="version-badge"></span>
+    <span id="updateBanner" class="update-banner hidden">
+      <span class="update-banner-text">Update Available!</span>
+      <button id="updateApplyBtn" class="update-apply-btn">Update Now</button>
+    </span>
+  </h1>
   <div id="currentProfileLine">Current Profile: <span id="currentProfileName">None</span></div>
 
   <div id="sessionPbBanner" class="session-pb-banner hidden">
@@ -1833,6 +1898,7 @@
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
         </svg>
       </button>
+      <span class="inline-hint">Hit refresh to reload all WRs &amp; splits!</span>
     </div>
     <div id="worldRecordsRefreshStatus" class="status-line"></div>
     <div id="worldRecordsBody" class="hidden">
@@ -2740,6 +2806,10 @@
   const obsFlashOpacityCheck = document.getElementById("obsFlashOpacityCheck");
   const settingsToggle = document.getElementById("settingsToggle");
   const settingsPanel = document.getElementById("settingsPanel");
+  const versionBadge = document.getElementById("versionBadge");
+  const updateBanner = document.getElementById("updateBanner");
+  const updateApplyBtn = document.getElementById("updateApplyBtn");
+  let pendingUpdateAssetUrl = null;
   const currentProfileName = document.getElementById("currentProfileName");
   function updateCurrentProfileDisplay() {
     currentProfileName.textContent = syncedUsername || "None";
@@ -4045,6 +4115,13 @@
     ws.send(JSON.stringify({ type: "RefreshWorldRecords" }));
   });
 
+  updateApplyBtn.addEventListener("click", () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN || !pendingUpdateAssetUrl) return;
+    updateApplyBtn.disabled = true;
+    updateApplyBtn.textContent = "Updating...";
+    ws.send(JSON.stringify({ type: "ApplyUpdate", assetUrl: pendingUpdateAssetUrl }));
+  });
+
   mainSpeedOnlyCheck.addEventListener("change", () => {
     localStorage.setItem(MAIN_SPEED_ONLY_KEY, mainSpeedOnlyCheck.checked ? "1" : "0");
     renderPBGlance();
@@ -5140,6 +5217,21 @@
         refreshWorldRecordsBtn.disabled = false;
         if (msg.ok) {
           WORLD_RECORDS = flattenWorldRecordGroups(msg.groups || {});
+          // Backfilled server-side from the bundled defaults (see
+          // server.py's own RefreshWorldRecords handler) - adopted here
+          // BEFORE the "clear overrides for a changed WR" pass just
+          // below, so that pass (a) sees the fresh data rather than
+          // whatever was loaded at page-open, and (b) if it ends up
+          // pushing a save of its own, pushes the backfilled state
+          // forward instead of overwriting it with a stale one. This is
+          // what actually fixes a WR splits override file that's been
+          // silently shadowing the bundled defaults since before this
+          // category's data even existed - every refresh from now on
+          // re-checks for anything still missing.
+          if (msg.wrSplits) {
+            wrSplits = msg.wrSplits;
+            localStorage.setItem(WR_SPLITS_STORAGE_KEY, JSON.stringify(wrSplits));
+          }
           const changes = msg.changes || [];
           // A new/changed WR invalidates any exact splits override saved
           // for that category - those were typed in for whichever run was
@@ -5170,6 +5262,24 @@
           worldRecordsRefreshStatus.textContent = "Refresh failed: " + (msg.error || "unknown error");
         }
         return;
+      } else if (msg.type === "UpdateCheckResult") {
+        if (msg.currentVersion) versionBadge.textContent = `v${msg.currentVersion}`;
+        if (msg.ok && msg.available && msg.assetUrl) {
+          pendingUpdateAssetUrl = msg.assetUrl;
+          updateBanner.classList.remove("hidden");
+        }
+        return;
+      } else if (msg.type === "UpdateApplyResult") {
+        if (!msg.ok) {
+          updateApplyBtn.disabled = false;
+          updateApplyBtn.textContent = "Update Now";
+          alert("Update failed: " + (msg.error || "unknown error"));
+        }
+        // On success the server process exits right after this message to
+        // let the swap happen - the websocket will drop and connect()'s own
+        // onclose will just keep retrying every 1s until the relaunched
+        // exe's new server comes back up, same as any other restart.
+        return;
       }
       renderDisplay();
     };
@@ -5190,8 +5300,12 @@
       // data moments after you fix it. Only the visible tab auto-syncing
       // avoids that; a background tab can still be synced explicitly by
       // bringing it forward and clicking Sync PBs.
+      // Same reasoning applies to the update check just below: a
+      // background tab left open from an earlier exe relaunch would
+      // otherwise also ask, and re-ask every time it reconnects.
       if (document.visibilityState === "visible") {
         syncFromMossRanking(true);
+        ws.send(JSON.stringify({ type: "CheckForUpdate" }));
       }
     };
 

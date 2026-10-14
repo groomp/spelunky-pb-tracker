@@ -29,8 +29,12 @@ Leave this window open while you play.
 import asyncio
 import json
 import mimetypes
+import os
+import subprocess
 import sys
 import threading
+import urllib.error
+import urllib.request
 import webbrowser
 from pathlib import Path
 
@@ -60,6 +64,14 @@ HD_TOOLBOX_ORIGIN = "http://localhost:4225"
 HOST = "localhost"
 PORT = 4226
 WS_PATH = "/ws"
+
+# Bumped on every tagged GitHub release - the single source of truth both
+# for what's shown next to the dashboard's own title and for what
+# "CheckForUpdate" compares against the latest release tag.
+VERSION = "1.2.3"
+GITHUB_REPO = "groomp/spelunky-pb-tracker"
+GITHUB_LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+GITHUB_USER_AGENT = "PBTracker-UpdateCheck"
 
 # When bundled by PyInstaller (--onefile), bundled read-only assets
 # (index.html, reference_splits.json, ...) are extracted to a temp dir at
@@ -174,6 +186,21 @@ def read_world_records_groups():
         return {}
 
 
+def read_wr_splits_override():
+    """The local WR splits override (exported_wr_splits.json) if one
+    exists, parsed - {} otherwise. Used by RefreshWorldRecords to
+    backfill it from the bundled defaults without reading through
+    serve_exported_wr_splits's own bundled-fallback behavior, which
+    would mask whether a (possibly near-empty) local override already
+    exists."""
+    if not EXPORT_PATH_WR.exists():
+        return {}
+    try:
+        return json.loads(EXPORT_PATH_WR.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
 def diff_world_records(old_groups, new_groups):
     """Flattens both (category names are unique across groups) and reports
     every category that's new or whose WR time/player changed since the
@@ -202,6 +229,129 @@ def diff_world_records(old_groups, new_groups):
                 "time": entry.get("time"), "player": entry.get("player"),
             })
     return changes
+
+
+def _parse_version(version_str):
+    """"v1.2.3" or "1.2.3" -> (1, 2, 3), for a simple tuple comparison -
+    good enough since every tag this project has ever used follows that
+    exact shape."""
+    cleaned = version_str.strip().lstrip("vV")
+    parts = []
+    for p in cleaned.split("."):
+        try:
+            parts.append(int(p))
+        except ValueError:
+            break
+    return tuple(parts)
+
+
+def _fetch_latest_release():
+    """Hits GitHub's own "latest release" API - blocking, so only ever
+    called via asyncio.to_thread. Returns (tag_name, html_url, asset_url)
+    for the PBTracker.exe asset, raising on any failure (no release, no
+    matching asset, network error, ...)."""
+    req = urllib.request.Request(
+        GITHUB_LATEST_RELEASE_URL,
+        headers={"User-Agent": GITHUB_USER_AGENT, "Accept": "application/vnd.github+json"},
+    )
+    with urllib.request.urlopen(req, timeout=15) as r:
+        data = json.loads(r.read().decode("utf-8"))
+    tag_name = data["tag_name"]
+    html_url = data.get("html_url", f"https://github.com/{GITHUB_REPO}/releases/latest")
+    asset_url = None
+    for asset in data.get("assets", []):
+        if asset.get("name") == "PBTracker.exe":
+            asset_url = asset.get("browser_download_url")
+            break
+    if asset_url is None:
+        raise ValueError("Latest release has no PBTracker.exe asset")
+    return tag_name, html_url, asset_url
+
+
+def _download_and_apply_update(asset_url):
+    """Downloads the new exe next to the running one, then spawns a
+    detached helper .bat that waits for THIS process to exit (Windows
+    won't let anything overwrite an exe file while it's still running as
+    a process), swaps it into place, relaunches it, and deletes itself.
+    Only ever called when frozen (getattr(sys, "frozen", False)) -
+    "the running exe" is meaningless otherwise."""
+    current_exe = Path(sys.executable)
+    new_exe = current_exe.with_name(current_exe.stem + "_new.exe")
+    req = urllib.request.Request(asset_url, headers={"User-Agent": GITHUB_USER_AGENT})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        new_exe.write_bytes(r.read())
+
+    helper_bat = current_exe.with_name("_pbtracker_update.bat")
+    pid = os.getpid()
+    helper_bat.write_text(
+        "@echo off\r\n"
+        ":waitloop\r\n"
+        f"tasklist /FI \"PID eq {pid}\" 2>NUL | find \"{pid}\" >NUL\r\n"
+        "if not errorlevel 1 (\r\n"
+        "  timeout /t 1 /nobreak >NUL\r\n"
+        "  goto waitloop\r\n"
+        ")\r\n"
+        f"move /Y \"{new_exe}\" \"{current_exe}\"\r\n"
+        f"start \"\" \"{current_exe}\"\r\n"
+        "del \"%~f0\"\r\n",
+        encoding="utf-8",
+    )
+    # CREATE_NO_WINDOW (a hidden console), not DETACHED_PROCESS (no console
+    # at all) - confirmed by testing that tasklist | find inside the bat
+    # above just hangs forever with no console to run in whatsoever.
+    subprocess.Popen(
+        ["cmd.exe", "/c", str(helper_bat)],
+        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP,
+        close_fds=True,
+    )
+
+
+async def refresh_world_records():
+    """The actual work behind the "Refresh World Records" button - also
+    run as part of applying a self-update (see the "ApplyUpdate" handler)
+    so a fresh install always starts from current WR times/splits instead
+    of whatever was last cached, without the player needing to remember to
+    click Refresh afterward too. Returns a dict matching the
+    "WorldRecordsRefreshed" websocket message shape."""
+    old_groups = read_world_records_groups()
+    # Blocking network I/O (6 category-page fetches) - off the event loop
+    # for the same reason as SyncMossRanking's own scrape.
+    new_groups = await asyncio.to_thread(mossranking.scrape_world_records)
+    changes = diff_world_records(old_groups, new_groups)
+    WORLD_RECORDS_CACHE_PATH.write_text(json.dumps(new_groups, indent=2))
+
+    # Backfills anything missing from the local WR splits override
+    # (exported_wr_splits.json) using the bundled defaults, same
+    # category-by-category, key-by-key gap-filling as mergeMossRankingData
+    # does for PBs - never touches a category/key the override already has
+    # (an older local file with an empty {} in it - created the moment
+    # this exact refresh last ran on an older version and found ANY WR
+    # change worth clearing an override for - would otherwise permanently
+    # shadow a newer, better bundled default forever, since the override
+    # always wins once the file exists at all, no matter how old).
+    wr_splits_added = 0
+    wr_splits = read_wr_splits_override()
+    default_path = BUNDLE_DIR / "default_wr_splits.json"
+    if default_path.exists():
+        try:
+            defaults = json.loads(default_path.read_text(encoding="utf-8"))
+        except Exception:
+            defaults = {}
+        for category, default_splits in defaults.items():
+            current = wr_splits.setdefault(category, {})
+            for key, value in default_splits.items():
+                if key not in current:
+                    current[key] = value
+                    wr_splits_added += 1
+            if not current:
+                del wr_splits[category]
+    if wr_splits_added:
+        EXPORT_PATH_WR.write_text(json.dumps(wr_splits, indent=2))
+
+    result = {"ok": True, "groups": new_groups, "changes": changes}
+    if wr_splits_added:
+        result["wrSplits"] = wr_splits
+    return result
 
 
 async def process_request(connection, request):
@@ -288,21 +438,73 @@ async def handle_client_message(websocket, message):
     elif msg_type == "RefreshWorldRecords":
         print("Refreshing World Records from Moss Ranking...")
         try:
-            old_groups = read_world_records_groups()
-            # Blocking network I/O (6 category-page fetches) - off the
-            # event loop for the same reason as SyncMossRanking above.
-            new_groups = await asyncio.to_thread(mossranking.scrape_world_records)
-            changes = diff_world_records(old_groups, new_groups)
-            WORLD_RECORDS_CACHE_PATH.write_text(json.dumps(new_groups, indent=2))
-            print(f"  -> refreshed, {len(changes)} change(s)")
-            await websocket.send(json.dumps({
-                "type": "WorldRecordsRefreshed", "ok": True,
-                "groups": new_groups, "changes": changes,
-            }))
+            result = await refresh_world_records()
+            changes = result["changes"]
+            wr_splits_added = "wrSplits" in result
+            print(f"  -> refreshed, {len(changes)} change(s), {'some' if wr_splits_added else 'no'} split(s) backfilled")
+            await websocket.send(json.dumps({"type": "WorldRecordsRefreshed", **result}))
         except Exception as e:
             print(f"  -> refresh failed: {e}")
             await websocket.send(json.dumps({
                 "type": "WorldRecordsRefreshed", "ok": False, "error": str(e),
+            }))
+
+    elif msg_type == "CheckForUpdate":
+        try:
+            tag_name, html_url, asset_url = await asyncio.to_thread(_fetch_latest_release)
+            latest_version = tag_name.lstrip("vV")
+            available = _parse_version(latest_version) > _parse_version(VERSION)
+            print(f"Update check: current={VERSION} latest={latest_version} available={available}")
+            await websocket.send(json.dumps({
+                "type": "UpdateCheckResult", "ok": True,
+                "currentVersion": VERSION, "latestVersion": latest_version,
+                "available": available, "releaseUrl": html_url, "assetUrl": asset_url,
+            }))
+        except Exception as e:
+            print(f"Update check failed: {e}")
+            await websocket.send(json.dumps({
+                "type": "UpdateCheckResult", "ok": False, "error": str(e), "currentVersion": VERSION,
+            }))
+
+    elif msg_type == "ApplyUpdate":
+        asset_url = msg.get("assetUrl")
+        if not getattr(sys, "frozen", False):
+            await websocket.send(json.dumps({
+                "type": "UpdateApplyResult", "ok": False,
+                "error": "Self-update only works in the packaged .exe, not when running from source.",
+            }))
+            return
+        if not asset_url:
+            await websocket.send(json.dumps({
+                "type": "UpdateApplyResult", "ok": False, "error": "No download URL given.",
+            }))
+            return
+        try:
+            # Same refresh the "Refresh World Records" button triggers -
+            # run here too so the override/cache files next to the exe
+            # (which survive the swap below untouched) are already current
+            # by the time the updated exe starts, instead of leaving
+            # whatever was last cached to silently shadow fresh data again.
+            # Best-effort: a refresh failure (offline, MossRanking down)
+            # shouldn't block installing the update itself.
+            try:
+                await refresh_world_records()
+                print("  -> World Records refreshed as part of the update")
+            except Exception as e:
+                print(f"  -> World Records refresh skipped (update continues): {e}")
+
+            print(f"Downloading update from {asset_url} ...")
+            await asyncio.to_thread(_download_and_apply_update, asset_url)
+            # The helper script is now waiting for this exact process to
+            # exit before it can swap the exe file - tell the page the
+            # update is on its way, then exit so that can happen.
+            await websocket.send(json.dumps({"type": "UpdateApplyResult", "ok": True}))
+            await asyncio.sleep(0.5)  # give the send above a moment to actually flush
+            os._exit(0)
+        except Exception as e:
+            print(f"Update apply failed: {e}")
+            await websocket.send(json.dumps({
+                "type": "UpdateApplyResult", "ok": False, "error": str(e),
             }))
 
 
