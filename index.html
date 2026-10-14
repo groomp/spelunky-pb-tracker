@@ -2045,17 +2045,67 @@
   // Olmec is stored as a duration ("33s") while Temple (4-3) is a cumulative
   // time ("2:21") - adding them gives the exact cumulative moment of
   // stepping into World 5, so Hell Entry never needs to be typed by hand.
+  //
+  // Every numerical shape a human (or MossRanking) might hand this a split
+  // as, all treated as the same underlying seconds value:
+  //   "2:21", "2:21.45"        - M:SS[.fff], this app's own native format
+  //   "1:02:21"                - H:MM:SS[.fff], in case a category ever
+  //                              runs long enough to need it
+  //   "33s", "32.9s"           - duration with its usual trailing unit
+  //   "33", "32.9"             - the same, bare - confirmed live: a
+  //                              MossRanking sync can hand back a duration
+  //                              split this way, with no colon and no
+  //                              unit, which would otherwise come back
+  //                              unparseable (silently killing that
+  //                              split's delta, with no baseline to
+  //                              compare the live value against)
+  //   "2m21s", "2m 21.5s",
+  //   "2min 21sec", "2m", "21s" - explicit unit letters instead of a
+  //                              colon, minutes and/or seconds, either
+  //                              one alone is fine too
+  //   "32,9"                   - a European-style decimal comma instead
+  //                              of a period - never actually ambiguous
+  //                              with a thousands separator here, splits
+  //                              never reach four digits
   function parseTimeValue(str) {
     if (!str) return null;
-    str = str.trim();
-    let m = str.match(/^(\d+):(\d{1,2})(?:\.(\d+))?$/);
+    str = str.trim().replace(",", ".");
+    if (!str) return null;
+    // [H:]M:SS[.fff] - the leading hour is optional and only consumes
+    // when there's a SECOND colon to make room for it, so "14:59.17"
+    // still reads as M:SS (0 hours), not minutes-mistaken-for-hours.
+    let m = str.match(/^(?:(\d+):)?(\d+):(\d{1,2})(?:\.(\d+))?$/);
     if (m) {
-      const frac = m[3] ? parseFloat("0." + m[3]) : 0;
-      return parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + frac;
+      const frac = m[4] ? parseFloat("0." + m[4]) : 0;
+      const hours = m[1] ? parseInt(m[1], 10) : 0;
+      return hours * 3600 + parseInt(m[2], 10) * 60 + parseInt(m[3], 10) + frac;
     }
-    m = str.match(/^(\d+(?:\.\d+)?)s$/);
+    // "2m21.5s" / "2m 21s" / "2min 21sec" / "2m" / "21s" - explicit unit
+    // letters, minutes and/or seconds (at least one of the two required,
+    // guarded below, so an empty/whitespace-only string doesn't match).
+    m = str.match(/^(?:(\d+)\s*m(?:in)?)?\s*(?:(\d+(?:\.\d+)?)\s*s(?:ec)?)?$/i);
+    if (m && (m[1] || m[2])) {
+      const mins = m[1] ? parseInt(m[1], 10) : 0;
+      const secs = m[2] ? parseFloat(m[2]) : 0;
+      return mins * 60 + secs;
+    }
+    // Bare seconds, with or without the trailing "s" - "33", "32.9", "33s".
+    m = str.match(/^(\d+(?:\.\d+)?)s?$/);
     if (m) return parseFloat(m[1]);
     return null;
+  }
+
+  // Floors (never rounds) to a given number of decimal places, formatted
+  // with trailing zeros padded out to it - every split/delta on the
+  // overlay shows the exact value it is, truncated, never bumped up to
+  // the next tenth/second the way plain .toFixed() would (23.7 -> "24"
+  // is wrong here, it should read "23"). The tiny epsilon guards against
+  // a value landing just under its true point in binary floating point
+  // (e.g. 23.699999999999996 instead of 23.7), which would otherwise
+  // floor one notch too low.
+  function floorToFixed(value, decimals) {
+    const factor = 10 ** decimals;
+    return (Math.floor(value * factor + 1e-7) / factor).toFixed(decimals);
   }
 
   function formatSecondsAsTime(totalSeconds) {
@@ -2069,8 +2119,8 @@
   // huge in Spelunky and the leading "0:" buries it. 60s+ still falls
   // back to the usual M:SS shape, where a bare "125s" stops being readable.
   function formatDeltaSeconds(absSeconds) {
-    const rounded = Math.round(absSeconds);
-    return rounded < 60 ? `${rounded}s` : formatSecondsAsTime(absSeconds);
+    const floored = Math.floor(absSeconds);
+    return floored < 60 ? `${floored}s` : formatSecondsAsTime(absSeconds);
   }
 
   // LiveSplit Style Splitting's configurable accuracy (see
@@ -2087,7 +2137,7 @@
     if (!decimals || totalSeconds >= 60) return formatSecondsAsTime(totalSeconds);
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds - mins * 60;
-    const secsStr = secs.toFixed(decimals);
+    const secsStr = floorToFixed(secs, decimals);
     return `${mins}:${secs < 10 ? "0" + secsStr : secsStr}`;
   }
 
@@ -2096,7 +2146,7 @@
   function formatDeltaSecondsWithPrecision(absSeconds, precisionKey) {
     const decimals = LIVESPLIT_PRECISION_DECIMALS[precisionKey];
     if (!decimals) return formatDeltaSeconds(absSeconds);
-    if (absSeconds < 60) return `${absSeconds.toFixed(decimals)}s`;
+    if (absSeconds < 60) return `${floorToFixed(absSeconds, decimals)}s`;
     return formatSecondsWithPrecision(absSeconds, precisionKey);
   }
 
@@ -2120,17 +2170,31 @@
   // setting; a split hand-typed as "0:30.45" only gets truncated if the
   // setting is coarser than what was actually entered (e.g. down to
   // "0:30.5" for Tenths).
-  function roundStoredSplitToAccuracy(str, accuracy) {
+  //
+  // Always re-rendered through secs/toFixed rather than ever returning
+  // the stored string as-is - parseTimeValue now accepts a whole pile of
+  // input shapes ("32.9", "32.9s", "2m21s", "32,9", ...), and no matter
+  // which one a split was actually typed/synced in, it needs to come out
+  // looking exactly like every other split of its kind. Duration splits
+  // (key is in IL_SPLIT_KEYS - Olmec/Worm/Mothership/Yama/City of Gold)
+  // always render as "Xs"; everything else (a cumulative checkpoint) as
+  // M:SS - decided by what the split actually IS, never by whatever
+  // shape its stored string happened to be in (a trailing "s" used to be
+  // the only signal for this, which broke the moment a duration split
+  // got stored WITHOUT one - see parseTimeValue's own notes).
+  function roundStoredSplitToAccuracy(str, accuracy, key) {
     if (!str) return str;
+    const secs = parseTimeValue(str);
+    if (secs == null) return str;
     const targetDecimals = LIVESPLIT_PRECISION_DECIMALS[accuracy] || 0;
     const fracMatch = str.match(/\.(\d+)/);
     const originalDecimals = fracMatch ? fracMatch[1].length : 0;
-    if (originalDecimals <= targetDecimals) return str;
-    const secs = parseTimeValue(str);
-    if (secs == null) return str;
-    return /s\s*$/.test(str.trim())
-      ? `${secs.toFixed(targetDecimals)}s`
-      : formatSecondsWithPrecision(secs, accuracy);
+    const decimals = Math.min(targetDecimals, originalDecimals);
+    if (IL_SPLIT_KEYS.has(key)) return `${floorToFixed(secs, decimals)}s`;
+    const mins = Math.floor(secs / 60);
+    const rem = secs - mins * 60;
+    const remStr = floorToFixed(rem, decimals);
+    return `${mins}:${rem < 10 ? "0" + remStr : remStr}`;
   }
 
   // Same shape as a PB's own stored time (e.g. "2:30.000" - MossRanking's
@@ -3455,7 +3519,7 @@
         const label = levelSlotLabel(areaIdx, slot, category);
         const row = document.createElement("div");
         row.className = "level-breakdown-row" + (lv ? "" : " missing");
-        row.textContent = lv ? `${label}: ${(lv.time / 1000).toFixed(2)}s` : `${label}: MISSING`;
+        row.textContent = lv ? `${label}: ${floorToFixed(lv.time / 1000, 2)}s` : `${label}: MISSING`;
         container.appendChild(row);
       }
     }
@@ -3494,7 +3558,7 @@
         const label = levelSlotLabel(areaIdx, slot, category);
         const row = document.createElement("div");
         row.className = "level-breakdown-row" + (lv ? "" : " missing");
-        row.textContent = lv ? `${label}: ${(lv.time / 1000).toFixed(2)}s` : `${label}: —`;
+        row.textContent = lv ? `${label}: ${floorToFixed(lv.time / 1000, 2)}s` : `${label}: —`;
         column.appendChild(row);
       }
       container.appendChild(column);
@@ -4152,7 +4216,7 @@
       ? renderSplitRows(
           el.splitsList, lookupCategory,
           showPbCol, (k) => comparisonSplitCell(
-            roundStoredSplitToAccuracy(splitValue(pb, k), accuracy), liveSplits && liveSplits[k], deltaAccuracy, showPbDelta,
+            roundStoredSplitToAccuracy(splitValue(pb, k), accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showPbDelta,
             splitValue(pb, k), livePreciseSplits && livePreciseSplits[k]
           ),
           showWrCol, (k) => comparisonSplitCell(
