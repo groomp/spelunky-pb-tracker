@@ -1,0 +1,156 @@
+{
+  "Any%": {
+    "Mines": "0:29",
+    "Jungle": "0:47",
+    "Ice Caves": "1:00",
+    "Temple (4-3)": "1:12",
+    "Olmec": "20s"
+  },
+  "Big Money": {
+    "Mines": "0:39",
+    "Jungle": "1:29",
+    "Ice Caves": "1:59",
+    "City of Gold": "49s",
+    "Temple (4-3)": "3:21",
+    "Olmec": "36s",
+    "Hell Entry": "3:57",
+    "Hell (5-3)": "4:36",
+    "Yama": "40s"
+  },
+  "Chain Eggplant%": {
+    "Mines": "1:02",
+    "Jungle": "2:11",
+    "Ice Caves": "3:05",
+    "Temple (4-3)": "4:39",
+    "Olmec": "33s",
+    "Hell Entry": "5:13",
+    "Hell (5-3)": "5:49",
+    "Yama": "18s"
+  },
+  "Chain Hell%": {
+    "Mines": "0:37",
+    "Jungle": "1:10",
+    "Ice Caves": "1:36",
+    "Temple (4-3)": "2:10",
+    "Olmec": "26s",
+    "Hell Entry": "2:36",
+    "Hell (5-3)": "3:05",
+    "Yama": "14s"
+  },
+  "Chain Low% Hell": {
+    "Mines": "0:39",
+    "Jungle": "1:28",
+    "Ice Caves": "2:06",
+    "Temple (4-3)": "2:43",
+    "Olmec": "50s",
+    "Hell Entry": "3:33",
+    "Hell (5-3)": "4:05",
+    "Yama": "34s"
+  },
+  "Low%": {
+    "Mines": "0:30",
+    "Jungle": "1:03",
+    "Ice Caves": "1:30",
+    "Temple (4-3)": "1:53",
+    "Olmec": "23s"
+  },
+  "Max Any%": {
+    "Mines": "0:24",
+    "Jungle": "0:50",
+    "Ice Caves": "1:21",
+    "Temple (4-3)": "1:35",
+    "Worm": "7s",
+    "Mothership": "7s",
+    "Olmec": "18s"
+  },
+  "Max Chain Hell%": {
+    "Mines": "0:31",
+    "Jungle": "0:57",
+    "Ice Caves": "1:58",
+    "Temple (4-3)": "2:38",
+    "Hell Entry": "3:03",
+    "Hell (5-3)": "3:32",
+    "Worm": "14s",
+    "Mothership": "7s",
+    "Olmec": "24s",
+    "Yama": "16s"
+  },
+  "Max Low%": {
+    "Mines": "0:36",
+    "Jungle": "1:25",
+    "Ice Caves": "2:21",
+    "Temple (4-3)": "2:47",
+    "Worm": "21s",
+    "Mothership": "15s",
+    "Olmec": "23s"
+  },
+  "No Gold": {
+    "Mines": "0:27",
+    "Jungle": "0:45",
+    "Ice Caves": "1:02",
+    "Temple (4-3)": "1:19",
+    "Olmec": "25s"
+  },
+  "No Gold Chain Hell%": {
+    "Mines": "0:31",
+    "Jungle": "1:18",
+    "Ice Caves": "1:50",
+    "Temple (4-3)": "2:31",
+    "Olmec": "23s",
+    "Hell Entry": "2:55",
+    "Hell (5-3)": "3:18",
+    "Yama": "14s"
+  },
+  "No Gold Low%": {
+    "Mines": "0:29",
+    "Jungle": "1:06",
+    "Ice Caves": "1:42",
+    "Temple (4-3)": "2:11",
+    "Olmec": "21s"
+  },
+  "No Teleporter Any%": {
+    "Mines": "0:36",
+    "Jungle": "0:59",
+    "Ice Caves": "1:20",
+    "Temple (4-3)": "1:39",
+    "Olmec": "23s"
+  },
+  "No Teleporter Chain Hell%": {
+    "Mines": "0:31",
+    "Jungle": "1:18",
+    "Ice Caves": "1:50",
+    "Temple (4-3)": "2:31",
+    "Olmec": "23s",
+    "Hell Entry": "2:55",
+    "Hell (5-3)": "3:18",
+    "Yama": "14s"
+  },
+  "No Teleporter Max Any%": {
+    "Mines": "0:33",
+    "Jungle": "1:14",
+    "Ice Caves": "1:54",
+    "Temple (4-3)": "2:16",
+    "Worm": "19s",
+    "Mothership": "10s",
+    "Olmec": "27s"
+  },
+  "No Teleporter Max Chain Hell%": {
+    "Mines": "0:33",
+    "Jungle": "1:18",
+    "Ice Caves": "2:28",
+    "Temple (4-3)": "2:58",
+    "Hell Entry": "3:19",
+    "Hell (5-3)": "3:44",
+    "Worm": "22s",
+    "Mothership": "16s",
+    "Olmec": "21s",
+    "Yama": "14s"
+  },
+  "No Teleporter No Gold Any%": {
+    "Mines": "0:36",
+    "Jungle": "0:59",
+    "Ice Caves": "1:20",
+    "Temple (4-3)": "1:39",
+    "Olmec": "23s"
+  }
+}

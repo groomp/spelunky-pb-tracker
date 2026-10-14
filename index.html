@@ -676,16 +676,45 @@
     margin: 8px 0 2px;
   }
 
-  /* Gray instead of .copy-btn's usual orange - a secondary/reveal action,
-     not a primary one like Sync PBs or Copy. */
-  .customize-toggle.copy-btn {
+  /* Gray instead of .copy-btn's usual orange - a secondary/reveal action
+     (Customize, View Level Breakdown, ...), not a primary one like Sync
+     PBs or Copy. */
+  .secondary-btn.copy-btn {
     background: linear-gradient(180deg, #5a5952, #45443f);
     border-color: var(--mr-border);
   }
 
-  .customize-toggle.copy-btn:hover {
+  .secondary-btn.copy-btn:hover {
     background: linear-gradient(180deg, #65645c, #4e4d47);
     border-color: #65645c;
+  }
+
+  /* Muted gray at rest, same as .secondary-btn - only turns red (and only
+     on hover) since this one is destructive, not just a reveal/toggle
+     action. A permanently-red trash icon would read as an alarm sitting
+     in the corner of every PB's splits editor; this way the warning only
+     shows up right as you're about to actually click it. */
+  .danger-btn.copy-btn {
+    background: linear-gradient(180deg, #5a5952, #45443f);
+    border-color: var(--mr-border);
+    color: var(--mr-muted);
+  }
+
+  .danger-btn.copy-btn:hover {
+    background: linear-gradient(180deg, #a33a2e, #7d2c22);
+    border-color: #a33a2e;
+    color: #fff;
+  }
+
+  /* Forces its own full-width row in .inline-splits-edit's flex-wrap
+     layout (same trick as .copy-splits-row), right-aligned so the trash
+     icon lands in the bottom-right corner of the splits editor instead of
+     just trailing whichever split input happened to wrap last. */
+  .delete-pb-row {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
   }
 
   .customize-body.hidden {
@@ -1351,8 +1380,8 @@
   }
 
   /* Per-level breakdown, reused by both the Session PBs review cards and
-     the "View Level Breakdown?" checkbox under Show PBs' own splits
-     editor (see renderLevelBreakdownInto) - grows to fit its content
+     the "View Level Breakdown" button under Show PBs' own splits editor
+     (see renderLevelBreakdownInto) - grows to fit its content
      instead of scrolling internally (its own little scrollbar-within-a-
      scrollbar was removed on request); #settingsPanel's own
      overflow-y:auto handles scrolling it like the rest of the page. */
@@ -1581,7 +1610,7 @@
           </div>
         </div>
       </div>
-      <button type="button" class="copy-btn customize-toggle">Customize Layout</button>
+      <button type="button" class="copy-btn customize-toggle secondary-btn">Customize Layout</button>
       <div class="link-opts customize-body hidden">
         <label><input type="checkbox" id="obsCategoryCheck"> Category?</label>
         <label><input type="checkbox" id="obsSplitsCheck"> Show PB Splits?</label>
@@ -1605,7 +1634,7 @@
       <div class="link-opts livesplit-toggles livesplit-master-toggle">
         <label><input type="checkbox" id="obsCurrentSplitsCheck"> Enable Autosplitter?</label>
       </div>
-      <button type="button" class="copy-btn customize-toggle">Customize</button>
+      <button type="button" class="copy-btn customize-toggle secondary-btn">Customize</button>
       <div class="link-opts livesplit-toggles customize-body hidden">
         <label><input type="checkbox" id="obsLivesplitShowPbDeltaCheck"> Show PB Delta?</label>
         <label><input type="checkbox" id="obsLivesplitShowWrDeltaCheck"> Show WR Delta?</label>
@@ -1660,7 +1689,7 @@
         </button>
         <button id="openCompactLinkBtn" class="copy-btn">Open in New Tab</button>
       </div>
-      <button type="button" class="copy-btn customize-toggle">Customize</button>
+      <button type="button" class="copy-btn customize-toggle secondary-btn">Customize</button>
       <div class="link-opts customize-body hidden">
         <label><input type="checkbox" id="compactCategoryCheck"> Category?</label>
         <label><input type="checkbox" id="compactSplitsCheck"> PB Splits?</label>
@@ -3694,23 +3723,32 @@
       });
       actions.appendChild(saveBtn);
 
-      const breakdownBtn = document.createElement("button");
-      breakdownBtn.className = "copy-btn";
-      breakdownBtn.textContent = "View Level Breakdown";
-      const breakdownBody = document.createElement("div");
-      breakdownBody.className = "level-breakdown hidden";
-      breakdownBtn.addEventListener("click", () => {
-        const isHidden = breakdownBody.classList.contains("hidden");
-        if (isHidden) {
-          renderLevelBreakdownInto(breakdownBody, entry.levelBreakdown, entry.category);
-          breakdownBody.classList.remove("hidden");
-          breakdownBtn.textContent = "Hide Level Breakdown";
-        } else {
-          breakdownBody.classList.add("hidden");
-          breakdownBtn.textContent = "View Level Breakdown";
-        }
-      });
-      actions.appendChild(breakdownBtn);
+      // Only shown when there's actually something to reveal - a session
+      // PB's levelBreakdown is normally always captured (see
+      // maybeRecordSessionPb), but skip the button entirely rather than
+      // have it open onto "No level breakdown saved for this PB." for the
+      // rare case it isn't there.
+      const hasBreakdown = Array.isArray(entry.levelBreakdown) && entry.levelBreakdown.some((a) => a);
+      if (hasBreakdown) {
+        const breakdownBtn = document.createElement("button");
+        breakdownBtn.className = "copy-btn secondary-btn";
+        breakdownBtn.textContent = "View Level Breakdown";
+        const breakdownBody = document.createElement("div");
+        breakdownBody.className = "level-breakdown hidden";
+        breakdownBtn.addEventListener("click", () => {
+          const isHidden = breakdownBody.classList.contains("hidden");
+          if (isHidden) {
+            renderLevelBreakdownInto(breakdownBody, entry.levelBreakdown, entry.category);
+            breakdownBody.classList.remove("hidden");
+            breakdownBtn.textContent = "Hide Level Breakdown";
+          } else {
+            breakdownBody.classList.add("hidden");
+            breakdownBtn.textContent = "View Level Breakdown";
+          }
+        });
+        actions.appendChild(breakdownBtn);
+        card.appendChild(breakdownBody);
+      }
 
       const dismissBtn = document.createElement("button");
       dismissBtn.className = "copy-btn";
@@ -3719,7 +3757,6 @@
       actions.appendChild(dismissBtn);
 
       card.appendChild(actions);
-      card.appendChild(breakdownBody);
       sessionPbReviewList.appendChild(card);
     }
   }
@@ -4220,7 +4257,7 @@
             splitValue(pb, k), livePreciseSplits && livePreciseSplits[k]
           ),
           showWrCol, (k) => comparisonSplitCell(
-            wrScaled && wrScaled[k], liveSplits && liveSplits[k], deltaAccuracy, showWrDelta,
+            roundStoredSplitToAccuracy(wrScaled && wrScaled[k], accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showWrDelta,
             wrScaled && wrScaled[k], livePreciseSplits && livePreciseSplits[k]
           ),
           newlyReachedKeys, includeIl, hideZero
@@ -4549,28 +4586,64 @@
 
     // Only populated for a PB saved via the Session PBs review flow (see
     // maybeRecordSessionPb/renderSessionPbReview) - a synced or
-    // hand-typed PB has no per-level data to show, handled gracefully by
-    // renderLevelBreakdownInto itself.
-    const breakdownRow = document.createElement("div");
-    breakdownRow.className = "level-breakdown-toggle-row";
-    const breakdownLabel = document.createElement("label");
-    const breakdownCheckbox = document.createElement("input");
-    breakdownCheckbox.type = "checkbox";
-    breakdownLabel.appendChild(breakdownCheckbox);
-    breakdownLabel.appendChild(document.createTextNode(" View Level Breakdown?"));
-    breakdownRow.appendChild(breakdownLabel);
-    const breakdownBody = document.createElement("div");
-    breakdownBody.className = "level-breakdown hidden";
-    breakdownCheckbox.addEventListener("change", () => {
-      if (breakdownCheckbox.checked) {
-        renderLevelBreakdownInto(breakdownBody, pbs[name].levelBreakdown, name);
-        breakdownBody.classList.remove("hidden");
-      } else {
-        breakdownBody.classList.add("hidden");
-      }
+    // hand-typed PB has no per-level data at all, so the button itself is
+    // skipped rather than sitting there just to open onto "No level
+    // breakdown saved for this PB."
+    const levelBreakdown = pbs[name].levelBreakdown;
+    const hasBreakdown = Array.isArray(levelBreakdown) && levelBreakdown.some((a) => a);
+    if (hasBreakdown) {
+      const breakdownRow = document.createElement("div");
+      breakdownRow.className = "level-breakdown-toggle-row";
+      const breakdownBtn = document.createElement("button");
+      breakdownBtn.type = "button";
+      breakdownBtn.className = "copy-btn secondary-btn";
+      breakdownBtn.textContent = "View Level Breakdown";
+      breakdownRow.appendChild(breakdownBtn);
+      const breakdownBody = document.createElement("div");
+      breakdownBody.className = "level-breakdown hidden";
+      breakdownBtn.addEventListener("click", () => {
+        const isHidden = breakdownBody.classList.contains("hidden");
+        if (isHidden) {
+          renderLevelBreakdownInto(breakdownBody, levelBreakdown, name);
+          breakdownBody.classList.remove("hidden");
+          breakdownBtn.textContent = "Hide Level Breakdown";
+        } else {
+          breakdownBody.classList.add("hidden");
+          breakdownBtn.textContent = "View Level Breakdown";
+        }
+      });
+      panel.appendChild(breakdownRow);
+      panel.appendChild(breakdownBody);
+    }
+
+    // Empties this one category's PB entirely (time, rank/rating/date,
+    // splits, level breakdown - the whole record) - bottom-right of the
+    // splits editor, same reasoning as a trash icon anywhere else: a
+    // deliberately out-of-the-way, destructive-looking corner action, not
+    // sitting in the same row as Save/Copy/View Level Breakdown. Confirmed
+    // first since there's no undo - a synced category just comes back
+    // clean on the next Sync PBs, but a hand-typed one is gone for good.
+    const deleteRow = document.createElement("div");
+    deleteRow.className = "delete-pb-row";
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "copy-btn icon-btn danger-btn";
+    deleteBtn.title = "Delete this PB and its splits";
+    deleteBtn.setAttribute("aria-label", `Delete PB and splits for ${name}`);
+    deleteBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<polyline points="3 6 5 6 21 6"></polyline>' +
+      '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>' +
+      '<line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+    deleteBtn.addEventListener("click", () => {
+      if (!confirm(`Delete the PB and all splits for "${name}"? This cannot be undone.`)) return;
+      delete pbs[name];
+      savePBs(pbs);
+      renderPBGlance();
+      renderDisplay();
     });
-    panel.appendChild(breakdownRow);
-    panel.appendChild(breakdownBody);
+    deleteRow.appendChild(deleteBtn);
+    panel.appendChild(deleteRow);
 
     return panel;
   }

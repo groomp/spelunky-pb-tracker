@@ -129,8 +129,20 @@ def serve_exported_pbs():
 
 def serve_exported_wr_splits():
     # Same idea as serve_exported_pbs, for hand-tweaked WR Splits overrides
-    # instead of PBs.
-    data = EXPORT_PATH_WR.read_bytes() if EXPORT_PATH_WR.exists() else b"{}"
+    # instead of PBs - with one difference: WR splits are a shared,
+    # community fact (not personal data like a PB), so a fresh install
+    # with no local override yet falls back to default_wr_splits.json - a
+    # bundled, read-only snapshot of real WR splits shipped with the exe -
+    # instead of empty. The moment a player edits any WR split locally,
+    # EXPORT_PATH_WR gets created with the full set (defaults plus their
+    # own edit - see saveWrSplits' own push, which always sends the whole
+    # object) and takes over from then on, same as any other local
+    # override.
+    if EXPORT_PATH_WR.exists():
+        data = EXPORT_PATH_WR.read_bytes()
+    else:
+        default_path = BUNDLE_DIR / "default_wr_splits.json"
+        data = default_path.read_bytes() if default_path.exists() else b"{}"
     headers = Headers()
     headers["Content-Type"] = "application/json"
     headers["Content-Length"] = str(len(data))
