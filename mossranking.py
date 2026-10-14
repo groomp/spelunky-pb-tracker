@@ -63,19 +63,33 @@ class ProfileNotFound(Exception):
 
 
 class _TableRowParser(HTMLParser):
+    """Besides each row's own cell text (self.rows), also tracks every
+    <a href> found in that row (self.row_hrefs, parallel to self.rows) -
+    a run's video submission is a link wrapped around an icon <img> with
+    no text of its own (<a href="https://youtu.be/..."><img ...></a>), so
+    it would otherwise vanish entirely once empty-text cells get filtered
+    out (see both scrape_* functions' own `[c for c in row if c]`)."""
+
     def __init__(self):
         super().__init__()
         self.rows = []
+        self.row_hrefs = []
         self._cur_row = None
+        self._cur_row_hrefs = None
         self._cur_cell = None
         self._in_td = False
 
     def handle_starttag(self, tag, attrs):
         if tag == "tr":
             self._cur_row = []
+            self._cur_row_hrefs = []
         elif tag == "td":
             self._in_td = True
             self._cur_cell = []
+        elif tag == "a" and self._cur_row_hrefs is not None:
+            href = dict(attrs).get("href")
+            if href:
+                self._cur_row_hrefs.append(href)
 
     def handle_endtag(self, tag):
         if tag == "td" and self._in_td:
@@ -86,11 +100,24 @@ class _TableRowParser(HTMLParser):
         elif tag == "tr" and self._cur_row is not None:
             if self._cur_row:
                 self.rows.append(self._cur_row)
+                self.row_hrefs.append(self._cur_row_hrefs)
             self._cur_row = None
+            self._cur_row_hrefs = None
 
     def handle_data(self, data):
         if self._in_td and self._cur_cell is not None:
             self._cur_cell.append(data)
+
+
+def _video_url_from_hrefs(hrefs):
+    """The one external (off-mossranking.com) link in a row, if any - a
+    video submission (YouTube, Twitch, ...), as opposed to the row's own
+    in-site navigation links (the category page and the player's profile,
+    both always either a relative path or mossranking.com itself)."""
+    for href in hrefs:
+        if href.startswith("http") and "mossranking.com" not in href:
+            return href
+    return None
 
 
 def _search_players(query):
@@ -150,16 +177,18 @@ def _fetch(url):
 def _parse_rows(html):
     parser = _TableRowParser()
     parser.feed(html)
-    return parser.rows
+    return parser
 
 
 def scrape_profile(user_id):
     """Returns (pbs, username). pbs is {category_name: {"time", "rank",
-    "rating", "date", "group"}} - "group" is which of PROFILE_GROUPS the
-    category was actually found under (e.g. "Pacifist", "Bookskip"), kept
-    for whenever a group/category filter gets built on top of this.
-    username is the player's Moss Ranking display name (from the page's
-    own "Profile: <name>" title), or None if it couldn't be found."""
+    "rating", "date", "group", "video"}} - "group" is which of
+    PROFILE_GROUPS the category was actually found under (e.g.
+    "Pacifist", "Bookskip"), kept for whenever a group/category filter
+    gets built on top of this. "video" is that run's submitted VOD link
+    (YouTube, Twitch, ...) if one was given, else None. username is the
+    player's Moss Ranking display name (from the page's own "Profile:
+    <name>" title), or None if it couldn't be found."""
     pbs = {}
     username = None
 
@@ -178,7 +207,8 @@ def scrape_profile(user_id):
             if m:
                 username = m.group(1).strip()
 
-        for row in _parse_rows(html):
+        parsed = _parse_rows(html)
+        for row, hrefs in zip(parsed.rows, parsed.row_hrefs):
             cells = [c for c in row if c]
             if len(cells) < 5:
                 continue
@@ -202,6 +232,7 @@ def scrape_profile(user_id):
                 pbs[category] = {
                     "time": time_or_score, "rank": int(rank), "rating": rating,
                     "date": cells[date_idx], "group": group_name,
+                    "video": _video_url_from_hrefs(hrefs),
                 }
 
     return pbs, username
@@ -216,10 +247,11 @@ def scrape_world_records():
     Each cid page lists its rows as one <tr> per category with 7 <td>
     cells: [category, player, time, longevity, rank badge (no text), video
     link (no text), comment] - rank badge/video cells come through as
-    empty strings, which is fine since only category/player/time are used.
-    Header and <hr>-separator rows have fewer cells and are skipped
-    naturally; score-only rows (Main Score) are skipped because their
-    "time" cell doesn't match TIME_RE.
+    empty strings (see _video_url_from_hrefs for how the video link
+    itself is still recovered, from the row's own <a href>, not its
+    text). Header and <hr>-separator rows have fewer cells and are
+    skipped naturally; score-only rows (Main Score) are skipped because
+    their "time" cell doesn't match TIME_RE.
     """
     groups = {}
     for cid, group_name in CATS_GROUPS.items():
@@ -229,12 +261,13 @@ def scrape_world_records():
         except urllib.error.URLError as e:
             raise ConnectionError(f"Couldn't reach Moss Ranking: {e}") from e
         entries = {}
-        for row in _parse_rows(html):
+        parsed = _parse_rows(html)
+        for row, hrefs in zip(parsed.rows, parsed.row_hrefs):
             if len(row) < 3:
                 continue
             category, player, time_val = row[0], row[1], row[2]
             if not category or not TIME_RE.match(time_val):
                 continue
-            entries[category] = {"time": time_val, "player": player}
+            entries[category] = {"time": time_val, "player": player, "video": _video_url_from_hrefs(hrefs)}
         groups[group_name] = entries
     return groups

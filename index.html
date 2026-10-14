@@ -814,6 +814,67 @@
     border-color: #4a8f3c;
   }
 
+  /* Same small-square footprint as .glance-edit-btn, gray like
+     .secondary-btn - a watch-the-VOD link, not a primary edit action. */
+  .glance-video-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: linear-gradient(180deg, #5a5952, #45443f);
+    color: var(--mr-text);
+    border: 1px solid var(--mr-border);
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+
+  .glance-video-btn svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .glance-video-btn:hover {
+    background: linear-gradient(180deg, #65645c, #4e4d47);
+    border-color: #65645c;
+    transform: translateY(-1px);
+  }
+
+  .glance-video-btn:active {
+    transform: translateY(0);
+  }
+
+  .glance-video-btn.active {
+    background: #4a8f3c;
+    border-color: #4a8f3c;
+    color: #fff;
+  }
+
+  /* Embedded inline right under its own glance row (see buildVideoLinkBtn)
+     instead of opening a new tab - a real 16:9 box, not just an icon, so
+     closing it (clearing the iframe's own src - see the click handler)
+     visibly and audibly stops whatever was playing. */
+  .glance-video-embed {
+    margin: 4px auto 8px;
+    max-width: 480px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+
+  .glance-video-embed.hidden {
+    display: none;
+  }
+
+  .glance-video-embed iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 8px;
+  }
+
   .inline-splits-edit {
     display: flex;
     flex-wrap: wrap;
@@ -2395,18 +2456,29 @@
       return null;
     }
 
-    const olmec = areas[3] && Array.isArray(areas[3].levels) ? areas[3].levels[3] : null;
-    if (olmec) splits["Olmec"] = durationToTime(olmec.time);
+    const templeOlmecArea = areas[3];
+    const olmec = templeOlmecArea && Array.isArray(templeOlmecArea.levels) ? templeOlmecArea.levels[3] : null;
+    if (olmec) {
+      splits["Olmec"] = durationToTime(olmec.time);
+    } else if (templeOlmecArea && templeOlmecArea.completed && temple) {
+      // Confirmed live: a run can finish (area 3's own completion fires,
+      // with a real time_pace) without Olmec's own per-level entry ever
+      // having been recorded - same class of bug as Yama below, just for
+      // Olmec's fixed slot instead. Falls back to the exact same math
+      // Hell Entry already relies on: area 3's own completion moment
+      // minus Temple (4-3)'s own cumulative moment is, by definition,
+      // exactly how long Olmec's fight took - no per-level flag needed.
+      const olmecMs = templeOlmecArea.time_pace - temple.time_pace;
+      if (olmecMs >= 0) splits["Olmec"] = durationToTime(olmecMs);
+    }
 
     // Hell Entry and Olmec happen at the exact same instant - stepping
     // into World 5 IS the moment Olmec's own fight ends, so this is just
     // area 3's own completion timestamp (set once, in _complete_area,
     // the instant that last level - Olmec - finishes), not a separate
     // derivation. Gated on area 3 actually being complete rather than on
-    // `olmec` above so it still populates even in the (per
-    // liveSplitsFromRunState's own class-level notes) rare case a
-    // level's own entry went missing but the area total didn't.
-    const templeOlmecArea = areas[3];
+    // `olmec` above so it still populates even in the same rare case
+    // handled just above.
     if (templeOlmecArea && templeOlmecArea.completed) {
       splits["Hell Entry"] = msToTime(templeOlmecArea.time_pace);
     }
@@ -3731,7 +3803,7 @@
       const hasBreakdown = Array.isArray(entry.levelBreakdown) && entry.levelBreakdown.some((a) => a);
       if (hasBreakdown) {
         const breakdownBtn = document.createElement("button");
-        breakdownBtn.className = "copy-btn secondary-btn";
+        breakdownBtn.className = "copy-btn";
         breakdownBtn.textContent = "View Level Breakdown";
         const breakdownBody = document.createElement("div");
         breakdownBody.className = "level-breakdown hidden";
@@ -4429,6 +4501,105 @@
     refreshLinks();
   });
 
+  // MossRanking video submissions are always a YouTube or Twitch page
+  // link, not an embeddable URL on its own - converts to the matching
+  // .../embed/... form, or null if the host isn't one of those two (that
+  // case has never actually been observed, but falls back to a plain
+  // "open in a new tab" link rather than a dead button). Twitch's embed
+  // player requires a "parent" param naming the embedding page's own
+  // hostname (not the video's) or it refuses to load at all.
+  function videoEmbedUrl(videoUrl) {
+    let u;
+    try {
+      u = new URL(videoUrl);
+    } catch (e) {
+      return null;
+    }
+    const host = u.hostname.replace(/^www\./, "");
+    const parent = encodeURIComponent(location.hostname || "localhost");
+    if (host === "youtu.be") {
+      const id = u.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (host === "youtube.com") {
+      const v = u.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+      const m = u.pathname.match(/^\/(embed|shorts)\/([^/]+)/);
+      return m ? `https://www.youtube.com/embed/${m[2]}` : null;
+    }
+    if (host === "clips.twitch.tv") {
+      const slug = u.pathname.slice(1);
+      return slug ? `https://clips.twitch.tv/embed?clip=${slug}&parent=${parent}&autoplay=false` : null;
+    }
+    if (host === "twitch.tv") {
+      const vod = u.pathname.match(/^\/videos\/(\d+)/);
+      if (vod) return `https://player.twitch.tv/?video=${vod[1]}&parent=${parent}&autoplay=false`;
+      const clip = u.pathname.match(/\/clip\/([^/?]+)/);
+      return clip ? `https://clips.twitch.tv/embed?clip=${clip[1]}&parent=${parent}&autoplay=false` : null;
+    }
+    return null;
+  }
+
+  // A small "watch VOD" button next to a time - only built when
+  // MossRanking actually had a video submitted for that specific run
+  // (see mossranking.py's own _video_url_from_hrefs), so a category with
+  // none just skips it entirely rather than showing a dead/disabled
+  // button. Returns { button, panel } - the caller appends `button` into
+  // the compact glance row itself and `panel` as a sibling of that row
+  // (a glance row is a tight single-line flex strip with no room for a
+  // video player inside it - see renderPBGlance/renderWorldRecordsGlance
+  // for where each half lands). Clicking toggles the panel open/closed,
+  // embedding an iframe on the spot instead of leaving the dashboard -
+  // and, critically, clears the iframe's own src on close rather than
+  // just hiding it, so a playing video actually stops instead of
+  // carrying on, unheard, behind a closed panel.
+  function buildVideoLinkBtn(videoUrl, label) {
+    if (!videoUrl) return null;
+    const embedUrl = videoEmbedUrl(videoUrl);
+
+    const panel = document.createElement("div");
+    panel.className = "glance-video-embed hidden";
+    let iframe = null;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "glance-video-btn";
+    button.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+
+    if (!embedUrl) {
+      // Never actually seen in practice (every submission so far has
+      // been YouTube or Twitch) - falls back to the next best thing
+      // instead of a button that does nothing.
+      button.title = `Watch video for ${label} (opens in a new tab)`;
+      button.setAttribute("aria-label", `Watch video for ${label} (opens in a new tab)`);
+      button.addEventListener("click", () => window.open(videoUrl, "_blank", "noopener,noreferrer"));
+      return { button, panel };
+    }
+
+    button.title = `Watch video for ${label}`;
+    button.setAttribute("aria-label", `Watch video for ${label}`);
+    button.addEventListener("click", () => {
+      const isHidden = panel.classList.contains("hidden");
+      if (isHidden) {
+        iframe = document.createElement("iframe");
+        iframe.src = embedUrl;
+        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+        iframe.allowFullscreen = true;
+        iframe.frameBorder = "0";
+        panel.innerHTML = "";
+        panel.appendChild(iframe);
+        panel.classList.remove("hidden");
+        button.classList.add("active");
+      } else {
+        panel.classList.add("hidden");
+        panel.innerHTML = ""; // drops the iframe entirely - stops playback/audio immediately
+        button.classList.remove("active");
+      }
+    });
+    return { button, panel };
+  }
+
   // Compact, read-only-except-time glance at every tracked category - no
   // per-row splits, no remove button, just enough to scan at a glance.
   // Also keeps the splits-editor dropdown's own option list in sync.
@@ -4491,8 +4662,11 @@
       row.appendChild(catSpan);
       row.appendChild(editBtn);
       row.appendChild(timeInput);
+      const video = buildVideoLinkBtn(pbs[name].video, name);
+      if (video) row.appendChild(video.button);
       row.appendChild(rankSpan);
       pbGlance.appendChild(row);
+      if (video) pbGlance.appendChild(video.panel);
 
       if (name === editingCategory) {
         pbGlance.appendChild(buildSplitsEditPanel(name));
@@ -4775,8 +4949,11 @@
       row.appendChild(catSpan);
       row.appendChild(editBtn);
       row.appendChild(timeInput);
+      const video = buildVideoLinkBtn(WORLD_RECORDS[name].video, name);
+      if (video) row.appendChild(video.button);
       row.appendChild(rankSpan);
       worldRecordsGlance.appendChild(row);
+      if (video) worldRecordsGlance.appendChild(video.panel);
 
       if (name === editingWrCategory) {
         worldRecordsGlance.appendChild(buildWrSplitsEditPanel(name));

@@ -35,19 +35,6 @@ POLL_INTERVAL_SECONDS = 0.05
 # from a read-only temp extraction dir, see server.py's own APP_DIR for
 # the same split), next to this file otherwise.
 _APP_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent
-# TEMPORARY: per-poll timing diagnostics for tracking down the exact
-# source of sub-millisecond drift in recovered sub-90s times (see
-# SessionTracker.poll's _log_timing calls) - remove once that's resolved.
-TIMING_DEBUG_LOG = _APP_DIR / "timing_debug.log"
-# TEMPORARY: logs every (level, screen_state, total_time_ms) whenever
-# screen_state isn't the plain "running" value - tracking down why Yama's
-# own level never finalizes (area 4, slot 3 - see RunTracker's class
-# docstring) on a genuine Hell-ending run. The real ending (killing Yama)
-# might cycle through a screen state VICTORY_SCREENS doesn't include, or
-# might never actually be caught by a 50ms poll - this records every raw
-# value actually observed so that can be confirmed instead of guessed.
-# Remove once that's resolved.
-SCREEN_DEBUG_LOG = _APP_DIR / "screen_debug.log"
 
 # Both known Spelunky HD executable versions - same two spelunky-fyi/
 # HD-Toolbox supports (libs/mem_reader/src/constants.rs). global_state is
@@ -456,6 +443,7 @@ class RunTracker:
             self._record_level(area, slot, gs.total_time_ms, died=False, **level_flags)
             self._complete_area(area, gs.total_time_ms, died=False)
 
+        self._backfill_missing_areas()
         self._prev_level = level
         self._prev_total_time_ms = gs.total_time_ms
 
@@ -467,6 +455,44 @@ class RunTracker:
         a["time_pace"] = time_pace
         if died:
             self.died = True
+
+    # Failsafe for a run where an area's own completion event got missed
+    # entirely - confirmed live: an Any% run reached Ice Caves with Mines
+    # and Jungle never marked complete (blank splits for both, the whole
+    # run), while Ice Caves itself completed normally right after, and a
+    # second, independent tracker running the same session showed every
+    # individual level's own data was always there the whole time - this
+    # reader's own area-level bookkeeping just never got told Mines/Jungle
+    # were actually done. Runs after every poll (not just when something
+    # changed), so an area that was missed is caught and backfilled the
+    # moment all of its own levels turn out to already be present, even if
+    # that's well after a LATER area (like Ice Caves above) already
+    # completed out of order.
+    def _backfill_missing_areas(self):
+        for idx, area in enumerate(self.areas):
+            if area is None or area["completed"]:
+                continue
+            # Every area expects its first 4 slots (a Worm's combined
+            # level leaves the slot right after it {"skipped": True}, not
+            # None - see _mark_skipped - so that still counts as filled).
+            # Ice Caves alone can expect 2 more (Mothership's own extra
+            # levels, slots 4-5) - only if this run actually visited it.
+            slot_count = 6 if (idx == 2 and self.visit_mothership) else 4
+            levels = area["levels"]
+            if any(levels[slot] is None for slot in range(slot_count)):
+                continue
+            last_real = None
+            for slot in range(slot_count):
+                lv = levels[slot]
+                if lv and not lv.get("skipped"):
+                    last_real = lv
+            if last_real is None:
+                continue
+            # time_pace is already cumulative-since-run-start (see
+            # _record_level) - the same value _complete_area would have
+            # used had it fired at the real moment, not a reconstruction.
+            area["completed"] = True
+            area["time_pace"] = last_real["time_pace"]
 
 
 # Confirmed live, across three genuine (non-skip) sub-90s clears: the game
@@ -535,31 +561,8 @@ class SessionTracker:
         self._prev_respawn_level = None
         self._sentinel_triggered = False
         self._frozen_total_time_ms = None  # the one value used for every poll once triggered
-        self._log_file = None
-        self._screen_log_file = None
-
-    def _log_timing(self, raw_total_time_ms, sentinel_triggered, final_total_time_ms):
-        # TEMPORARY - see TIMING_DEBUG_LOG. Opened lazily (not in __init__)
-        # so a SessionTracker that's created but never actually polled
-        # (shouldn't happen, but cheap to guard) never touches disk.
-        if self._log_file is None:
-            self._log_file = open(TIMING_DEBUG_LOG, "a", encoding="utf-8")
-            self._log_file.write("wall_clock_s,raw_total_time_ms,sentinel_triggered,final_total_time_ms\n")
-        self._log_file.write(
-            f"{time.monotonic():.6f},{raw_total_time_ms},{sentinel_triggered},{final_total_time_ms}\n"
-        )
-        self._log_file.flush()
-
-    def _log_screen(self, level, screen_state, total_time_ms):
-        # TEMPORARY - see SCREEN_DEBUG_LOG.
-        if self._screen_log_file is None:
-            self._screen_log_file = open(SCREEN_DEBUG_LOG, "a", encoding="utf-8")
-            self._screen_log_file.write("wall_clock_s,level,screen_state,total_time_ms\n")
-        self._screen_log_file.write(f"{time.monotonic():.6f},{level},{screen_state},{total_time_ms}\n")
-        self._screen_log_file.flush()
 
     def poll(self, gs: GameState):
-        raw_total_time_ms = gs.total_time_ms
         is_new_run = self._prev_total_time_ms is not None and (
             (gs.total_time_ms < 5000 and gs.total_time_ms < self._prev_total_time_ms)
             or (self._prev_respawn_level is not None and gs.respawn_level != self._prev_respawn_level)
@@ -577,9 +580,6 @@ class SessionTracker:
         if self._sentinel_triggered and not is_new_run:
             gs.total_time_ms = self._frozen_total_time_ms
 
-        self._log_timing(raw_total_time_ms, self._sentinel_triggered, gs.total_time_ms)
-        if gs.screen_state != SCREEN_RUNNING:
-            self._log_screen(gs.level, gs.screen_state, gs.total_time_ms)
         self.run.update(gs)
         self._prev_total_time_ms = gs.total_time_ms
         self._prev_respawn_level = gs.respawn_level
