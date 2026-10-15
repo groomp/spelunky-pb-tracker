@@ -1950,7 +1950,10 @@
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
         </svg>
       </button>
-      <span class="inline-hint">Hit refresh to reload all WRs &amp; splits!</span>
+      <span class="inline-hint">Hit refresh to reload all WRs</span>
+    </div>
+    <div class="link-row">
+      <button id="loadOfficialWrSplitsBtn" class="copy-btn danger-btn">Load WR Splits</button>
     </div>
     <div id="worldRecordsRefreshStatus" class="status-line"></div>
     <div id="worldRecordsBody" class="hidden">
@@ -2894,6 +2897,7 @@
   const togglePbGlanceBtn = document.getElementById("togglePbGlanceBtn");
   const toggleWorldRecordsBtn = document.getElementById("toggleWorldRecordsBtn");
   const refreshWorldRecordsBtn = document.getElementById("refreshWorldRecordsBtn");
+  const loadOfficialWrSplitsBtn = document.getElementById("loadOfficialWrSplitsBtn");
   const worldRecordsRefreshStatus = document.getElementById("worldRecordsRefreshStatus");
   const worldRecordsBody = document.getElementById("worldRecordsBody");
   const worldRecordsGlance = document.getElementById("worldRecordsGlance");
@@ -4226,6 +4230,23 @@
     ws.send(JSON.stringify({ type: "RefreshWorldRecords" }));
   });
 
+  // Destructive, unlike Refresh above (which only ever fills in gaps and
+  // never overwrites a value you already have, local or synced) - this
+  // wipes every WR split on this machine, hand-typed/estimated ones
+  // included, and replaces the whole set with whatever's bundled in THIS
+  // version's own default_wr_splits.json. For when Refresh alone isn't
+  // enough to get someone off a stale/wrong set they picked up on an old
+  // version - see server.py's "LoadDefaultWrSplits" handler.
+  loadOfficialWrSplitsBtn.addEventListener("click", () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      worldRecordsRefreshStatus.textContent = "Not connected - can't load right now.";
+      return;
+    }
+    loadOfficialWrSplitsBtn.disabled = true;
+    worldRecordsRefreshStatus.textContent = "Loading official WR splits...";
+    ws.send(JSON.stringify({ type: "LoadDefaultWrSplits" }));
+  });
+
   updateApplyBtn.addEventListener("click", () => {
     if (!ws || ws.readyState !== WebSocket.OPEN || !pendingUpdateAssetUrl) return;
     updateApplyBtn.disabled = true;
@@ -5440,6 +5461,24 @@
           }
         } else {
           worldRecordsRefreshStatus.textContent = "Refresh failed: " + (msg.error || "unknown error");
+        }
+        return;
+      } else if (msg.type === "WrSplitsLoaded") {
+        loadOfficialWrSplitsBtn.disabled = false;
+        if (msg.ok) {
+          // A full replace, not a merge - server.py's own
+          // "LoadDefaultWrSplits" handler already overwrote the file on
+          // disk; this just adopts that same result here instead of
+          // re-saving it (the server is already the source of truth for
+          // this write).
+          wrSplits = msg.data || {};
+          localStorage.setItem(WR_SPLITS_STORAGE_KEY, JSON.stringify(wrSplits));
+          if (!worldRecordsBody.classList.contains("hidden")) renderWorldRecordsGlance();
+          const count = Object.keys(wrSplits).length;
+          worldRecordsRefreshStatus.textContent =
+            `Loaded ${count} official WR split${count === 1 ? "" : "s"} - all previous local splits replaced.`;
+        } else {
+          worldRecordsRefreshStatus.textContent = "Load failed: " + (msg.error || "unknown error");
         }
         return;
       } else if (msg.type === "UpdateCheckResult") {

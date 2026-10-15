@@ -68,7 +68,7 @@ WS_PATH = "/ws"
 # Bumped on every tagged GitHub release - the single source of truth both
 # for what's shown next to the dashboard's own title and for what
 # "CheckForUpdate" compares against the latest release tag.
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 GITHUB_REPO = "groomp/spelunky-pb-tracker"
 GITHUB_LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 GITHUB_USER_AGENT = "PBTracker-UpdateCheck"
@@ -413,6 +413,33 @@ async def handle_client_message(websocket, message):
         except Exception as e:
             print(f"Failed to save WR split overrides: {e}")
             await websocket.send(json.dumps({"type": "SaveAck", "ok": False, "error": str(e)}))
+
+    elif msg_type == "LoadDefaultWrSplits":
+        # Destructive, unlike RefreshWorldRecords' own backfill (which
+        # only ever fills gaps and never overwrites a value that's
+        # already there, local edits included) - this throws out whatever
+        # WR splits override exists on this machine entirely, hand-typed/
+        # estimated ones included, and replaces it outright with
+        # whatever's bundled as THIS version's own default_wr_splits.json.
+        # For players stuck on a stale/wrong split set an old version
+        # already wrote to their own override file, which Refresh alone
+        # can never touch since every value in it already "exists".
+        print("Loading official WR splits (full overwrite)...")
+        try:
+            default_path = BUNDLE_DIR / "default_wr_splits.json"
+            defaults = json.loads(default_path.read_text(encoding="utf-8")) if default_path.exists() else {}
+            EXPORT_PATH_WR.write_text(json.dumps(defaults, indent=2))
+            print(f"  -> wrote {len(defaults)} categories to {EXPORT_PATH_WR.name}")
+            await websocket.send(json.dumps({"type": "WrSplitsLoaded", "ok": True, "data": defaults}))
+            others = clients - {websocket}
+            if others:
+                update_msg = json.dumps({"type": "WrSplitsUpdated", "data": defaults})
+                await asyncio.gather(
+                    *(client.send(update_msg) for client in others), return_exceptions=True
+                )
+        except Exception as e:
+            print(f"  -> load failed: {e}")
+            await websocket.send(json.dumps({"type": "WrSplitsLoaded", "ok": False, "error": str(e)}))
 
     elif msg_type == "SyncMossRanking":
         profile_input = msg.get("profile", "")
