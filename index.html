@@ -430,6 +430,28 @@
     margin-top: 2px;
   }
 
+  /* Opt-in (see showSplitsTotal/obsSplitsTotalCheck) - a compact "PB: X" /
+     "WR: X [by Player]" pair under the splits grid, same wording as the
+     standalone PB/WR Time lines in the opposite corner, just small enough
+     to tuck under an already-dense splits list instead of standing on
+     its own. PB reads a notch bigger than WR - it's the line that
+     actually matters while you're playing. */
+  .splits-total-compact {
+    font-weight: 700;
+    opacity: 0.85;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .splits-total-pb {
+    font-size: 0.95em;
+  }
+
+  .splits-total-wr {
+    font-size: 0.85em;
+    color: #999;
+  }
+
   .split-row .split-time.wr-time {
     opacity: 0.8;
   }
@@ -1126,6 +1148,20 @@
     transition: color 0.12s ease;
   }
 
+  /* Groups "Include PB/WR Under Splits?" with its own dependent "WR
+     Holder?" toggle into one grid cell, stacked and indented, so the
+     relationship reads as parent/sub-option regardless of where the pair
+     lands in the surrounding 2-column grid. */
+  .splits-total-toggle-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .splits-total-toggle-group .sub-toggle {
+    margin-left: 20px;
+  }
+
   .link-opts label:hover {
     color: var(--mr-text);
   }
@@ -1674,6 +1710,7 @@
       </div>
       <div class="splits-list" id="splitsList"></div>
     </div>
+    <div class="splits-total-compact" id="splitsTotalCompact"></div>
   </div>
   <div class="run-complete" id="runCompleteText"></div>
   <div class="category pending" id="categoryLine">
@@ -1762,6 +1799,7 @@
                 </div>
                 <div class="splits-list" id="previewSplitsList"></div>
               </div>
+              <div class="splits-total-compact" id="previewSplitsTotalCompact"></div>
             </div>
             <div class="run-complete" id="previewRunCompleteText"></div>
             <div class="category pending" id="previewCategoryLine">
@@ -1798,6 +1836,10 @@
         <label><input type="checkbox" id="obsDateCheck"> Date PB Accomplished?</label>
         <label><input type="checkbox" id="obsWrTimeCheck"> WR Time?</label>
         <label><input type="checkbox" id="obsLevelBreakdownCheck"> Show All Levels?</label>
+        <div class="splits-total-toggle-group">
+          <label><input type="checkbox" id="obsSplitsTotalCheck"> Include PB/WR Under Splits?</label>
+          <label class="sub-toggle"><input type="checkbox" id="obsWrHolderCheck"> WR Holder?</label>
+        </div>
       </div>
       <div class="obs-preview-controls">
         <label for="obsTextOpacityInput">Text opacity</label>
@@ -1995,6 +2037,17 @@
   // Opt-in (unlike the other compact toggles above, which default ON) -
   // a glance/debug view, not part of the overlay's normal output.
   const showLevelBreakdown = urlParams.get("levelbreakdown") === "1";
+  // Opt-in - a compact "PB: X" / "WR: X" pair placed right under the
+  // splits grid with the category's own overall PB/WR time (see
+  // paintCorners/renderSplitsTotalCompact), off by default same as every
+  // other newer toggle.
+  const showSplitsTotal = urlParams.get("splitstotal") === "1";
+  // Defaults ON (unlike showSplitsTotal above) - controls whether BOTH
+  // that compact WR line AND the standalone WR Time? line in the other
+  // corner (el.wrAttribution) name the WR holder ("by Player"), since the
+  // latter always included it before this toggle existed - defaulting on
+  // keeps a link copied before this existed looking exactly the same.
+  const showWrHolder = urlParams.get("wrholder") !== "0";
   // "textopacity" (0-100) is a real, static setting baked into the copied
   // link - not just a dashboard preview knob - so it applies here too.
   // Normally it's applied once, at load. "flashopacity=1" instead treats
@@ -2846,6 +2899,7 @@
   const wrColLabel = document.getElementById("wrColLabel");
   const wrAttribution = document.getElementById("wrAttribution");
   const splitsList = document.getElementById("splitsList");
+  const splitsTotalCompact = document.getElementById("splitsTotalCompact");
   const previewCategoryText = document.getElementById("previewCategoryText");
   const previewCategoryLine = document.getElementById("previewCategoryLine");
   const previewPbText = document.getElementById("previewPbText");
@@ -2860,6 +2914,7 @@
   const previewWrColLabel = document.getElementById("previewWrColLabel");
   const previewWrAttribution = document.getElementById("previewWrAttribution");
   const previewSplitsList = document.getElementById("previewSplitsList");
+  const previewSplitsTotalCompact = document.getElementById("previewSplitsTotalCompact");
   const obsPreview = document.getElementById("obsPreview");
   const obsPreviewImg = document.getElementById("obsPreviewImg");
   const obsPreviewStage = document.getElementById("obsPreviewStage");
@@ -2945,6 +3000,8 @@
   const obsRatingCheck = document.getElementById("obsRatingCheck");
   const obsDateCheck = document.getElementById("obsDateCheck");
   const obsLevelBreakdownCheck = document.getElementById("obsLevelBreakdownCheck");
+  const obsSplitsTotalCheck = document.getElementById("obsSplitsTotalCheck");
+  const obsWrHolderCheck = document.getElementById("obsWrHolderCheck");
   const previewLevelBreakdownColumns = document.getElementById("previewLevelBreakdownColumns");
   const obsPreviewExampleSelect = document.getElementById("obsPreviewExampleSelect");
   const compactSplitsCheck = document.getElementById("compactSplitsCheck");
@@ -2982,6 +3039,8 @@
   obsRatingCheck.checked = !!linkOpts.obsRating;
   obsDateCheck.checked = !!linkOpts.obsDate;
   obsLevelBreakdownCheck.checked = !!linkOpts.obsLevelBreakdown;
+  obsSplitsTotalCheck.checked = !!linkOpts.obsSplitsTotal;
+  obsWrHolderCheck.checked = linkOpts.obsWrHolder !== false;
   obsPreviewExampleSelect.value = linkOpts.obsPreviewExample || "any";
   compactSplitsCheck.checked = linkOpts.compactSplits !== false;
   compactWrSplitsCheck.checked = linkOpts.compactWrSplits !== false;
@@ -3015,6 +3074,8 @@
       `&rating=${obsRatingCheck.checked ? 1 : 0}` +
       `&date=${obsDateCheck.checked ? 1 : 0}` +
       `&levelbreakdown=${obsLevelBreakdownCheck.checked ? 1 : 0}` +
+      `&splitstotal=${obsSplitsTotalCheck.checked ? 1 : 0}` +
+      `&wrholder=${obsWrHolderCheck.checked ? 1 : 0}` +
       `&textopacity=${obsTextOpacityInput.value}` +
       `&flashopacity=${obsFlashOpacityCheck.checked ? 1 : 0}` +
       `&livesplitanimations=${obsLivesplitAnimationsCheck.checked ? 1 : 0}` +
@@ -3050,6 +3111,8 @@
       obsRating: obsRatingCheck.checked,
       obsDate: obsDateCheck.checked,
       obsLevelBreakdown: obsLevelBreakdownCheck.checked,
+      obsSplitsTotal: obsSplitsTotalCheck.checked,
+      obsWrHolder: obsWrHolderCheck.checked,
       obsPreviewExample: obsPreviewExampleSelect.value,
       compactSplits: compactSplitsCheck.checked,
       compactWrSplits: compactWrSplitsCheck.checked,
@@ -3075,7 +3138,8 @@
 
   [
     obsSplitsCheck, obsWrSplitsCheck, obsCurrentSplitsCheck, obsCategoryCheck, obsPbCheck, obsWrTimeCheck,
-    obsRankCheck, obsRatingCheck, obsDateCheck, obsLevelBreakdownCheck, obsPreviewExampleSelect, obsFlashOpacityCheck,
+    obsRankCheck, obsRatingCheck, obsDateCheck, obsLevelBreakdownCheck, obsSplitsTotalCheck, obsWrHolderCheck,
+    obsPreviewExampleSelect, obsFlashOpacityCheck,
     obsLivesplitAnimationsCheck, obsLivesplitShowPbDeltaCheck, obsLivesplitShowWrDeltaCheck,
     obsLivesplitIncludeIlCheck, obsLivesplitHideMinuteZeroCheck,
     obsLivesplitAccuracySelect, obsLivesplitDeltaSelect,
@@ -4369,6 +4433,31 @@
     return entries.length;
   }
 
+  // Opt-in (see showSplitsTotal/obsSplitsTotalCheck) - a compact "PB: X"
+  // / "WR: X [by Player]" pair placed right under the splits grid, same
+  // wording as the standalone PB/WR Time lines over in the other corner
+  // (see paintCorners' own el.pbText/el.wrAttribution), just smaller and
+  // tucked directly under the splits instead of living on its own. PB
+  // gets its own slightly-larger size than WR (see .splits-total-compact
+  // CSS) - showWrHolder further controls whether the WR line also names
+  // who holds it.
+  function renderSplitsTotalCompact(container, pb, wr, showWrHolder) {
+    container.innerHTML = "";
+    if (pb && pb.time) {
+      const line = document.createElement("div");
+      line.className = "splits-total-pb";
+      line.textContent = "PB: " + pb.time;
+      container.appendChild(line);
+    }
+    if (wr && wr.time) {
+      const line = document.createElement("div");
+      line.className = "splits-total-wr";
+      line.textContent = showWrHolder ? `WR: ${wr.time} by ${wr.player}` : `WR: ${wr.time}`;
+      container.appendChild(line);
+    }
+    container.style.display = container.childElementCount ? "" : "none";
+  }
+
   // Paints one corner-pair (the real overlay's, or the dashboard's OBS
   // preview) from current state. Pulled out of renderDisplay so the
   // preview can stay a pixel-for-pixel twin of the real output instead of
@@ -4376,6 +4465,7 @@
   function paintCorners(el, opts) {
     const {
       showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
+      showSplitsTotal, showWrHolder,
       // Defaults are the real live state (for the actual overlay, via
       // renderDisplay below) - renderPreview instead passes fixed sample
       // data, so the dashboard's OBS Live Preview can show what every
@@ -4578,6 +4668,12 @@
           newlyReachedKeys, includeIl, hideZero
         )
       : 0;
+    if (showSplitsTotal) {
+      renderSplitsTotalCompact(el.splitsTotalCompact, pb, wr, showWrHolder);
+    } else {
+      el.splitsTotalCompact.innerHTML = "";
+      el.splitsTotalCompact.style.display = "none";
+    }
     // Grid column count follows whichever of PB/WR are actually active,
     // so there's no empty reserved column when one is off.
     const cols = ["minmax(7.5em, max-content)"];
@@ -4588,7 +4684,7 @@
     el.wrColLabel.style.display = showWrCol ? "" : "none";
     el.splitsHeaderRow.style.display = rowCount ? "" : "none";
     if (showWrTime && wr) {
-      el.wrAttribution.textContent = `WR: ${wr.time} by ${wr.player}`;
+      el.wrAttribution.textContent = showWrHolder ? `WR: ${wr.time} by ${wr.player}` : `WR: ${wr.time}`;
       el.wrAttribution.style.display = "";
     } else {
       el.wrAttribution.textContent = "";
@@ -4600,7 +4696,7 @@
   const overlayEls = {
     categoryText, categoryLine, pbText, newPbText, rankText, dateText, runCompleteText,
     splitsBlock, splitsGrid, splitsHeaderRow, pbColLabel, wrColLabel,
-    wrAttribution, splitsList,
+    wrAttribution, splitsList, splitsTotalCompact,
   };
 
   function renderDisplay() {
@@ -4624,6 +4720,7 @@
     }
     paintCorners(overlayEls, {
       showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
+      showSplitsTotal, showWrHolder,
     });
     if (showLevelBreakdown) {
       levelBreakdownColumns.classList.add("shown");
@@ -4650,6 +4747,7 @@
     wrColLabel: previewWrColLabel,
     wrAttribution: previewWrAttribution,
     splitsList: previewSplitsList,
+    splitsTotalCompact: previewSplitsTotalCompact,
   };
 
   // Fixed sample data for the OBS Live Preview below - every toggle needs
@@ -4755,6 +4853,8 @@
       showRank: obsRankCheck.checked,
       showRating: obsRatingCheck.checked,
       showDate: obsDateCheck.checked,
+      showSplitsTotal: obsSplitsTotalCheck.checked,
+      showWrHolder: obsWrHolderCheck.checked,
       category: scenario.category,
       pbsSource: { [scenario.category]: scenario.pb },
       worldRecordsSource: { [scenario.category]: scenario.wr },
