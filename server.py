@@ -68,7 +68,7 @@ WS_PATH = "/ws"
 # Bumped on every tagged GitHub release - the single source of truth both
 # for what's shown next to the dashboard's own title and for what
 # "CheckForUpdate" compares against the latest release tag.
-VERSION = "1.2.3"
+VERSION = "1.3.0"
 GITHUB_REPO = "groomp/spelunky-pb-tracker"
 GITHUB_LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 GITHUB_USER_AGENT = "PBTracker-UpdateCheck"

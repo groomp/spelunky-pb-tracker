@@ -242,6 +242,18 @@
     max-width: 100%;
   }
 
+  /* Real stream overlay (?transparent, see obsLevelBreakdownCheck) and the
+     OBS Live Preview panel (same markup, scaled down) both want a single
+     vertical list instead of compact's side-by-side columns - each area's
+     levels stack under the ones before it, inside the bottom-right corner
+     alongside PB/rank/date. */
+  body.transparent .corner .level-breakdown-columns.shown,
+  .preview-corner .level-breakdown-columns.shown {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   .level-breakdown-column {
     flex: 0 0 auto;
     min-width: 4.5em;
@@ -266,6 +278,28 @@
 
   .level-breakdown-columns .level-breakdown-row.missing {
     opacity: 0.4;
+  }
+
+  /* Hell runs add a 5th area's worth of rows (see renderLevelBreakdownColumns'
+     own has-hell toggle) - shrink the whole panel down a notch so all 5
+     areas still fit the overlay's vertical space instead of running off
+     the top/bottom of the screen. */
+  .level-breakdown-columns.has-hell {
+    gap: 4px;
+  }
+
+  .level-breakdown-columns.has-hell .level-breakdown-column {
+    padding-top: 3px;
+  }
+
+  .level-breakdown-columns.has-hell .level-breakdown-column-header {
+    font-size: 0.75em;
+    margin-bottom: 3px;
+  }
+
+  .level-breakdown-columns.has-hell .level-breakdown-row {
+    font-size: 0.68em;
+    line-height: 1.35;
   }
 
   .category {
@@ -1227,6 +1261,12 @@
     margin-bottom: 8px;
   }
 
+  /* Sits right under the OBS Live Preview box - a little breathing room
+     so the dropdown doesn't crowd up against it. */
+  .example-run-row {
+    margin-top: 14px;
+  }
+
   /* Each link (Browser Source, Compact View) gets its own clearly
      bounded sub-card instead of two headings and their controls just
      running together in one undifferentiated column - this is what makes
@@ -1636,16 +1676,17 @@
     </div>
   </div>
   <div class="run-complete" id="runCompleteText"></div>
-  <!-- Compact-only, opt-in (see compactLevelBreakdownCheck/
-       ?levelbreakdown=1) - one column per area, see
-       renderLevelBreakdownColumns. -->
-  <div class="level-breakdown-columns" id="levelBreakdownColumns"></div>
   <div class="category pending" id="categoryLine">
     <span id="categoryText">Connecting...</span>
   </div>
 </div>
 
 <div class="corner bottom-right text-stroke">
+  <!-- Opt-in (see obsLevelBreakdownCheck/compactLevelBreakdownCheck,
+       ?levelbreakdown=1) - one column per area, see
+       renderLevelBreakdownColumns. Right corner instead of sharing the
+       left one with the splits grid/category. -->
+  <div class="level-breakdown-columns" id="levelBreakdownColumns"></div>
   <div class="pb unset" id="pbText"></div>
   <div class="new-pb" id="newPbText"></div>
   <div class="wr-attribution" id="wrAttribution"></div>
@@ -1728,6 +1769,7 @@
             </div>
           </div>
           <div class="preview-corner bottom-right text-stroke">
+            <div class="level-breakdown-columns" id="previewLevelBreakdownColumns"></div>
             <div class="pb unset" id="previewPbText"></div>
             <div class="new-pb" id="previewNewPbText"></div>
             <div class="wr-attribution" id="previewWrAttribution"></div>
@@ -1735,6 +1777,15 @@
             <div class="date-accomplished" id="previewDateText"></div>
           </div>
         </div>
+      </div>
+      <div class="link-row example-run-row">
+        <label for="obsPreviewExampleSelect">Example Run</label>
+        <select id="obsPreviewExampleSelect">
+          <option value="any">Any%</option>
+          <option value="anyHell">Chain Hell%</option>
+          <option value="max">Max Any%</option>
+          <option value="maxHell">Max Chain Hell%</option>
+        </select>
       </div>
       <button type="button" class="copy-btn customize-toggle secondary-btn">Customize Layout</button>
       <div class="link-opts customize-body hidden">
@@ -1746,6 +1797,7 @@
         <label><input type="checkbox" id="obsWrSplitsCheck"> Show WR Splits?</label>
         <label><input type="checkbox" id="obsDateCheck"> Date PB Accomplished?</label>
         <label><input type="checkbox" id="obsWrTimeCheck"> WR Time?</label>
+        <label><input type="checkbox" id="obsLevelBreakdownCheck"> Show All Levels?</label>
       </div>
       <div class="obs-preview-controls">
         <label for="obsTextOpacityInput">Text opacity</label>
@@ -2229,6 +2281,12 @@
   // tries both phrasings) - this only touches what's actually painted on
   // screen.
   function shortenCategoryForDisplay(category) {
+    // Only abbreviate "No Teleporter" -> "No TP" for longer category names
+    // (5+ words, e.g. "No Teleporter Pacifist Chain Hell") where the full
+    // phrase crowds out the rest of the overlay - a short name like "No
+    // Teleporter Any%" has plenty of room to stay spelled out.
+    const wordCount = category.trim().split(/\s+/).length;
+    if (wordCount < 5) return category;
     return category.replace(/No Teleporter/g, "No TP");
   }
 
@@ -2882,6 +2940,9 @@
   const obsRankCheck = document.getElementById("obsRankCheck");
   const obsRatingCheck = document.getElementById("obsRatingCheck");
   const obsDateCheck = document.getElementById("obsDateCheck");
+  const obsLevelBreakdownCheck = document.getElementById("obsLevelBreakdownCheck");
+  const previewLevelBreakdownColumns = document.getElementById("previewLevelBreakdownColumns");
+  const obsPreviewExampleSelect = document.getElementById("obsPreviewExampleSelect");
   const compactSplitsCheck = document.getElementById("compactSplitsCheck");
   const compactWrSplitsCheck = document.getElementById("compactWrSplitsCheck");
   const compactCurrentSplitsCheck = document.getElementById("compactCurrentSplitsCheck");
@@ -2916,6 +2977,8 @@
   obsRankCheck.checked = !!linkOpts.obsRank;
   obsRatingCheck.checked = !!linkOpts.obsRating;
   obsDateCheck.checked = !!linkOpts.obsDate;
+  obsLevelBreakdownCheck.checked = !!linkOpts.obsLevelBreakdown;
+  obsPreviewExampleSelect.value = linkOpts.obsPreviewExample || "any";
   compactSplitsCheck.checked = linkOpts.compactSplits !== false;
   compactWrSplitsCheck.checked = linkOpts.compactWrSplits !== false;
   compactCurrentSplitsCheck.checked = linkOpts.compactCurrentSplits !== false;
@@ -2947,6 +3010,7 @@
       `&rank=${obsRankCheck.checked ? 1 : 0}` +
       `&rating=${obsRatingCheck.checked ? 1 : 0}` +
       `&date=${obsDateCheck.checked ? 1 : 0}` +
+      `&levelbreakdown=${obsLevelBreakdownCheck.checked ? 1 : 0}` +
       `&textopacity=${obsTextOpacityInput.value}` +
       `&flashopacity=${obsFlashOpacityCheck.checked ? 1 : 0}` +
       `&livesplitanimations=${obsLivesplitAnimationsCheck.checked ? 1 : 0}` +
@@ -2981,6 +3045,8 @@
       obsRank: obsRankCheck.checked,
       obsRating: obsRatingCheck.checked,
       obsDate: obsDateCheck.checked,
+      obsLevelBreakdown: obsLevelBreakdownCheck.checked,
+      obsPreviewExample: obsPreviewExampleSelect.value,
       compactSplits: compactSplitsCheck.checked,
       compactWrSplits: compactWrSplitsCheck.checked,
       compactCurrentSplits: compactCurrentSplitsCheck.checked,
@@ -3005,7 +3071,7 @@
 
   [
     obsSplitsCheck, obsWrSplitsCheck, obsCurrentSplitsCheck, obsCategoryCheck, obsPbCheck, obsWrTimeCheck,
-    obsRankCheck, obsRatingCheck, obsDateCheck, obsFlashOpacityCheck,
+    obsRankCheck, obsRatingCheck, obsDateCheck, obsLevelBreakdownCheck, obsPreviewExampleSelect, obsFlashOpacityCheck,
     obsLivesplitAnimationsCheck, obsLivesplitShowPbDeltaCheck, obsLivesplitShowWrDeltaCheck,
     obsLivesplitIncludeIlCheck, obsLivesplitHideMinuteZeroCheck,
     obsLivesplitAccuracySelect, obsLivesplitDeltaSelect,
@@ -3744,6 +3810,10 @@
     container.innerHTML = "";
     const areas = runState && Array.isArray(runState.areas) ? runState.areas : [];
     const isHell = isHellCategory(category);
+    // A 5th area's worth of extra rows (Hell runs - see the AREA_INFO loop
+    // below) doesn't fit the stream overlay's vertical space at the normal
+    // size, so shrink everything down a notch whenever it's showing.
+    container.classList.toggle("has-hell", isHell);
     for (let areaIdx = 0; areaIdx < AREA_INFO.length; areaIdx++) {
       if (AREA_INFO[areaIdx].name === "Hell" && !isHell) continue;
       const info = AREA_INFO[areaIdx];
@@ -3768,6 +3838,47 @@
       }
       container.appendChild(column);
     }
+  }
+
+  // The level breakdown shares the bottom-right corner with the PB/Rank/
+  // Rating/Date/WR Time lines below it - fewer of those showing (or none
+  // at all) leaves more vertical room above them, so this grows the
+  // breakdown to actually fill that space instead of sitting at a fixed
+  // size regardless of what else is on - real measurement, not fixed
+  // tiers, since exactly how much room is free depends on which lines are
+  // on AND whether Hell's extra areas are showing (see
+  // renderLevelBreakdownColumns' own has-hell toggle) at the same time.
+  // Must run AFTER renderLevelBreakdownColumns has populated the rows for
+  // this render (and after has-hell is set) - otherwise it measures stale
+  // content.
+  //
+  // Every size inside the breakdown (column headers, rows, has-hell's own
+  // shrink) is defined in em relative to the container, so one inline
+  // font-size here scales all of it together - no per-size special-casing
+  // needed. stageHeightPx is the full vertical space the corner (fixed
+  // bottom:20px) is positioned against - window.innerHeight for the real
+  // overlay, the Live Preview's own native stage pixel height for the OBS
+  // preview (see layoutPreview - the CSS transform that scales the stage
+  // down for display doesn't affect this element's own layout height).
+  function applyLevelBreakdownScale(container, stageHeightPx) {
+    const corner = container.parentElement;
+    if (!corner || !stageHeightPx) return;
+    // Reset first so both measurements below reflect the breakdown's own
+    // natural (1x) size, not whatever scale was left over from the
+    // previous render.
+    container.style.fontSize = "";
+    const naturalHeight = container.offsetHeight;
+    if (!naturalHeight) return; // nothing rendered into it
+    // The corner's total height minus the breakdown's own natural height
+    // is exactly how much room the OTHER lines (PB/Rank/Rating/Date/WR
+    // Time) below it need right now, whatever that happens to be - no
+    // need to check each checkbox individually.
+    const siblingsHeight = corner.offsetHeight - naturalHeight;
+    const BOTTOM_MARGIN = 20; // matches .corner's own bottom:20px
+    const TOP_BUFFER = 12; // breathing room off the very top edge
+    const available = stageHeightPx - BOTTOM_MARGIN - TOP_BUFFER - siblingsHeight;
+    const scale = Math.max(0.85, Math.min(2.4, available / naturalHeight));
+    container.style.fontSize = (scale * 100) + "%";
   }
 
   // Called once per freshly-captured completedRunSnapshot (see
@@ -4496,6 +4607,7 @@
     if (showLevelBreakdown) {
       levelBreakdownColumns.classList.add("shown");
       renderLevelBreakdownColumns(levelBreakdownColumns, currentRunState, lookupCategory);
+      applyLevelBreakdownScale(levelBreakdownColumns, window.innerHeight);
     } else {
       levelBreakdownColumns.classList.remove("shown");
     }
@@ -4526,31 +4638,92 @@
   // (green) and Jungle slower (red), so Live Splits? demonstrates both
   // colors at once; Ice Caves/Temple/Olmec are deliberately left
   // unreached, showing the plain PB/WR reference values untouched.
-  const SAMPLE_CATEGORY = "Any%";
-  const SAMPLE_PBS = {
-    "Any%": {
-      time: "1:40.230", rank: 42, rating: "92.14%", date: "2026-01-15",
-      splits: { "Mines": "0:30", "Jungle": "0:50", "Ice Caves": "1:04", "Temple (4-3)": "1:18", "Olmec": "22s" },
+  //
+  // Four different category shapes (see obsPreviewExampleSelect) so the
+  // preview can actually show what a layout looks like for runs with more
+  // going on than plain Any% - Max adds Worm/Mothership, Hell adds Hell
+  // Entry/Hell (5-3)/Yama (see splitKeysFor), and Max Hell has both.
+  const MINES_JUNGLE_LEVELS = [
+    { completed: true, time_pace: 28000, levels: [
+      { time: 6500 }, { time: 7200 }, { time: 6800 }, { time: 7500 },
+    ] },
+    { completed: true, time_pace: 51000, levels: [
+      { time: 5500 }, { time: 6200 }, { time: 5800 }, { time: 5500 },
+    ] },
+    null, null, null,
+  ];
+  const SAMPLE_SCENARIOS = {
+    any: {
+      category: "Any%",
+      pb: {
+        time: "1:40.230", rank: 42, rating: "92.14%", date: "2026-01-15",
+        splits: { "Mines": "0:30", "Jungle": "0:50", "Ice Caves": "1:04", "Temple (4-3)": "1:18", "Olmec": "22s" },
+      },
+      wr: { time: "1:28.500", player: "SampleRunner" },
+      wrSplits: { "Mines": "0:29", "Jungle": "0:47", "Ice Caves": "1:00", "Temple (4-3)": "1:12", "Olmec": "20s" },
+      runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
+    },
+    anyHell: {
+      category: "Chain Hell%",
+      pb: {
+        time: "3:40.230", rank: 42, rating: "92.14%", date: "2026-01-15",
+        splits: {
+          "Mines": "0:30", "Jungle": "0:50", "Ice Caves": "1:04", "Temple (4-3)": "1:18", "Olmec": "22s",
+          "Hell Entry": "1:25", "Hell (5-3)": "3:10", "Yama": "35s",
+        },
+      },
+      wr: { time: "3:28.500", player: "SampleRunner" },
+      wrSplits: {
+        "Mines": "0:29", "Jungle": "0:47", "Ice Caves": "1:00", "Temple (4-3)": "1:12", "Olmec": "20s",
+        "Hell Entry": "1:22", "Hell (5-3)": "3:05", "Yama": "33s",
+      },
+      runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
+    },
+    max: {
+      category: "Max Any%",
+      pb: {
+        time: "2:05.400", rank: 10, rating: "95.00%", date: "2026-02-01",
+        splits: {
+          "Mines": "0:32", "Jungle": "0:52", "Worm": "0:12", "Mothership": "0:30",
+          "Ice Caves": "1:20", "Temple (4-3)": "1:35", "Olmec": "24s",
+        },
+      },
+      wr: { time: "1:55.000", player: "SampleRunner" },
+      wrSplits: {
+        "Mines": "0:30", "Jungle": "0:49", "Worm": "0:10", "Mothership": "0:28",
+        "Ice Caves": "1:15", "Temple (4-3)": "1:30", "Olmec": "21s",
+      },
+      runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
+    },
+    maxHell: {
+      category: "Max Chain Hell%",
+      pb: {
+        time: "4:05.400", rank: 10, rating: "95.00%", date: "2026-02-01",
+        splits: {
+          "Mines": "0:32", "Jungle": "0:52", "Worm": "0:12", "Mothership": "0:30",
+          "Ice Caves": "1:20", "Temple (4-3)": "1:35", "Olmec": "24s",
+          "Hell Entry": "1:42", "Hell (5-3)": "3:40", "Yama": "38s",
+        },
+      },
+      wr: { time: "3:55.000", player: "SampleRunner" },
+      wrSplits: {
+        "Mines": "0:30", "Jungle": "0:49", "Worm": "0:10", "Mothership": "0:28",
+        "Ice Caves": "1:15", "Temple (4-3)": "1:30", "Olmec": "21s",
+        "Hell Entry": "1:38", "Hell (5-3)": "3:32", "Yama": "36s",
+      },
+      runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
     },
   };
-  const SAMPLE_WORLD_RECORDS = { "Any%": { time: "1:28.500", player: "SampleRunner" } };
-  const SAMPLE_WR_SPLITS = {
-    "Any%": { "Mines": "0:29", "Jungle": "0:47", "Ice Caves": "1:00", "Temple (4-3)": "1:12", "Olmec": "20s" },
-  };
-  const SAMPLE_RUN_STATE = {
-    time: 51000,
-    areas: [
-      { completed: true, time_pace: 28000 },
-      { completed: true, time_pace: 51000 },
-      null, null, null,
-    ],
-  };
+  function currentSampleScenario() {
+    return SAMPLE_SCENARIOS[obsPreviewExampleSelect.value] || SAMPLE_SCENARIOS.any;
+  }
 
   // Mirrors whatever the OBS link's own checkboxes currently say (so it
   // previews that exact link's settings), but against the fixed sample
   // data above instead of live state - lets you see what every toggle
   // looks like without needing the game or HD Toolbox running.
   function renderPreview() {
+    const scenario = currentSampleScenario();
     paintCorners(previewEls, {
       showPbSplits: obsSplitsCheck.checked,
       showWrSplits: obsWrSplitsCheck.checked,
@@ -4561,11 +4734,11 @@
       showRank: obsRankCheck.checked,
       showRating: obsRatingCheck.checked,
       showDate: obsDateCheck.checked,
-      category: SAMPLE_CATEGORY,
-      pbsSource: SAMPLE_PBS,
-      worldRecordsSource: SAMPLE_WORLD_RECORDS,
-      wrSplitsSource: SAMPLE_WR_SPLITS,
-      runState: SAMPLE_RUN_STATE,
+      category: scenario.category,
+      pbsSource: { [scenario.category]: scenario.pb },
+      worldRecordsSource: { [scenario.category]: scenario.wr },
+      wrSplitsSource: { [scenario.category]: scenario.wrSplits },
+      runState: scenario.runState,
       snapshot: null,
       animations: obsLivesplitAnimationsCheck.checked,
       accuracy: obsLivesplitAccuracySelect.value,
@@ -4575,6 +4748,13 @@
       includeIl: obsLivesplitIncludeIlCheck.checked,
       hideZero: obsLivesplitHideMinuteZeroCheck.checked,
     });
+    if (obsLevelBreakdownCheck.checked) {
+      previewLevelBreakdownColumns.classList.add("shown");
+      renderLevelBreakdownColumns(previewLevelBreakdownColumns, scenario.runState, scenario.category);
+      applyLevelBreakdownScale(previewLevelBreakdownColumns, obsPreviewImg.naturalHeight);
+    } else {
+      previewLevelBreakdownColumns.classList.remove("shown");
+    }
   }
 
   // The stage is drawn at the background image's real pixel size (so its
