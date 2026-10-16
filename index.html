@@ -76,25 +76,16 @@
   /* Three modes, switched by URL (?transparent for OBS, ?compact for your
      own quick glance, neither for the control dashboard):
      - default: the dashboard (#settingsPanel) fills the page; the stream
-       corner layout and its toggle button are both hidden - there's
-       nothing to glance at here, just setup.
+       corner layout is hidden - there's nothing to glance at here, just
+       setup.
      - transparent: ONLY the corner layout shows, full stop - no dashboard,
-       no toggle button, ever. This is what your viewers see, so no UI
-       chrome should be reachable from it.
-     - compact: the corner layout (reordered into one block below) shows
-       by default, with the dashboard toggle-able on top via the button -
-       handy to tweak something without leaving your glance window. */
-  #settingsToggle,
+       ever. This is what your viewers see, so no UI chrome should be
+       reachable from it.
+     - compact: just the corner layout (reordered into one block below),
+       full stop - no dashboard here either, open the plain (no query
+       param) page instead to change settings. */
   #settingsPanel {
     display: none;
-  }
-
-  body.compact #settingsToggle {
-    display: block;
-  }
-
-  body.compact #settingsPanel.open {
-    display: flex;
   }
 
   body:not(.transparent):not(.compact) #settingsPanel {
@@ -300,6 +291,46 @@
   .level-breakdown-columns.has-hell .level-breakdown-row {
     font-size: 0.68em;
     line-height: 1.35;
+  }
+
+  /* Opt-in (see obsLevelBreakdownCompactCheck) - strips the column
+     header and per-row level label down to just the bare times, tight
+     line-height within an area, a wider gap between areas (see the gap
+     override below) as the only remaining visual separator. */
+  .level-breakdown-columns.compact-levels .level-breakdown-column-header {
+    display: none;
+  }
+
+  /* Once this small, sitting right above PB/Rank/Date near the bottom
+     edge reads as cramped - pin it to the top of the page/stage instead,
+     independent of the corner's own bottom-anchored stack. The wider gap
+     here (vs. the 6px above) is what now visually separates one area
+     from the next with no header/border left to do it. position:fixed is
+     contained by .obs-preview-stage's own transform in the OBS Preview
+     (rather than escaping it for the real viewport), landing in the same
+     coordinate space .preview-corner itself uses - so one rule covers
+     both contexts. */
+  body.transparent .corner .level-breakdown-columns.compact-levels,
+  .preview-corner .level-breakdown-columns.compact-levels {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    bottom: auto;
+    gap: 18px;
+  }
+
+  .level-breakdown-columns.compact-levels .level-breakdown-column {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .level-breakdown-columns.compact-levels .level-breakdown-row {
+    /* Fixed size matching .date-accomplished ("Date PB Accomplished?",
+       bottom right) - the auto-fit JS scaling is skipped for this mode
+       (see renderDisplay/renderPreview) so this em value isn't fighting
+       an inline scale. */
+    font-size: 0.85em;
+    line-height: 1.05;
   }
 
   .category {
@@ -517,33 +548,6 @@
     animation: category-wiggle 0.5s ease-in-out;
   }
 
-  #settingsToggle {
-    position: fixed;
-    top: 10px;
-    right: 12px;
-    background: var(--mr-orange);
-    color: #fff;
-    border: 1px solid var(--mr-orange);
-    border-radius: 6px;
-    padding: 4px 9px;
-    cursor: pointer;
-    font-size: 0.85em;
-    font-family: "Roboto", sans-serif;
-    -webkit-text-stroke: 0;
-    box-shadow: var(--mr-shadow-sm);
-    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-  }
-
-  #settingsToggle:hover {
-    background: var(--mr-orange-hover);
-    border-color: var(--mr-orange-hover);
-    transform: translateY(-1px);
-  }
-
-  #settingsToggle:active {
-    transform: translateY(0);
-  }
-
   #settingsPanel {
     position: relative;
     flex-direction: column;
@@ -578,14 +582,6 @@
   body:not(.transparent):not(.compact) #settingsPanel {
     width: 100%;
     height: 100%;
-  }
-
-  /* Compact mode: toggled on top of the glance view instead. */
-  body.compact #settingsPanel.open {
-    position: fixed;
-    inset: 0;
-    background: var(--mr-bg);
-    padding: 50px 20px 20px;
   }
 
   #settingsPanel h1 {
@@ -1137,6 +1133,18 @@
     font-size: 0.85em;
   }
 
+  /* OBS Preview's Customize Layout wraps its checkboxes in two of these
+     (see linksSection) instead of leaving them as direct .link-opts
+     children, so left/right column order can be specified explicitly
+     (independent, differently-sized lists) rather than left to the
+     grid's own row-major auto-placement. Each column is still just one
+     cell of the surrounding 2-column .link-opts grid above. */
+  .link-opts-column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   /* Three short checkboxes that read better together on one line than
      wrapped 2-per-row like a regular .link-opts grid. */
   .link-opts.livesplit-toggles {
@@ -1154,21 +1162,64 @@
     transition: color 0.12s ease;
   }
 
-  /* Groups "Include PB/WR Under Splits?" with its own dependent WR
-     Holder?/Rank? toggles into one grid cell, stacked and indented, so
-     the relationship reads as parent/sub-options regardless of where the
-     group lands in the surrounding 2-column grid. */
-  .splits-total-toggle-group {
+  /* Groups a parent checkbox ("Show All Levels?", "Include PB/WR Under
+     Splits?") with its own dependent sub-toggles into one grid cell,
+     stacked, so the relationship reads as parent/sub-options regardless
+     of where the group lands in the surrounding 2-column grid. */
+  .toggle-group {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
 
+  /* An elbow connector drawn from the parent checkbox down into this
+     stack of sub-toggles - makes the dependency visually explicit
+     instead of relying on indentation/font-size alone. Sub-toggles stack
+     vertically, all left-aligned at the same indent, one connector at
+     the top where the elbow lands rather than a separate line per item -
+     they read as one column hanging off the same branch. */
   .sub-toggle-row {
+    position: relative;
     display: flex;
-    gap: 16px;
-    margin-left: 20px;
-    font-size: 0.88em;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin-left: 10px;
+    padding-left: 14px;
+    font-size: 0.85em;
+  }
+
+  .sub-toggle-row::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -8px;
+    height: 18px;
+    width: 10px;
+    border-left: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-bottom: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 0 0 0 6px;
+  }
+
+  /* Sub-toggles read as a distinct, lower tier of option (a small chip)
+     rather than just a smaller version of the parent checkboxes. */
+  .sub-toggle {
+    padding: 3px 10px 3px 7px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+
+  .sub-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.26);
+  }
+
+  .sub-toggle:has(input:checked) {
+    color: var(--mr-text);
+    background: rgba(204, 98, 29, 0.2);
+    border-color: rgba(204, 98, 29, 0.45);
   }
 
   .link-opts label:hover {
@@ -1577,33 +1628,77 @@
 
   /* Per-level breakdown, reused by both the Session PBs review cards and
      the "View Level Breakdown" button under Show PBs' own splits editor
-     (see renderLevelBreakdownInto) - grows to fit its content
-     instead of scrolling internally (its own little scrollbar-within-a-
-     scrollbar was removed on request); #settingsPanel's own
-     overflow-y:auto handles scrolling it like the rest of the page. */
-  /* flex-wrap, NOT column-width - column-width's horizontal overflow
-     wouldn't be reachable at all once there's no room for another column
-     (the same lesson the compact overlay's own now-removed debug view
-     learned the hard way). flex-wrap reflows left-to-right instead,
-     growing downward with the rest of the page. */
+     (see renderLevelBreakdownInto) - grows to fit its content instead of
+     scrolling internally (its own little scrollbar-within-a-scrollbar
+     was removed on request); #settingsPanel's own overflow-y:auto
+     handles scrolling it like the rest of the page.
+     One column per area (same AREA_INFO name/color pairing the compact
+     overlay's own columnar breakdown uses - see renderLevelBreakdownColumns)
+     instead of a single flex-wrapped list of rows - that old layout fixed
+     every row to the same 90px width regardless of its text, so anything
+     longer ("City of Gold: 100.86s", "Mothership: 25.60s") wrapped onto a
+     second line and threw off every row after it, no longer lining up
+     into readable columns at all. flex-wrap on the outer container (not
+     column-width) reflows whole columns left-to-right instead, growing
+     downward with the rest of the page once there's no room for another. */
   .level-breakdown {
     margin-top: 10px;
-    padding: 10px;
+    padding: 14px;
     border: 1px solid var(--mr-border);
     border-radius: 8px;
-    font-size: 0.82em;
-    line-height: 1.5;
+    font-size: 0.7em;
     display: flex;
     flex-wrap: wrap;
-    gap: 2px 18px;
+    gap: 18px 28px;
   }
 
   .level-breakdown.hidden {
     display: none;
   }
 
-  .level-breakdown-row {
-    flex: 0 0 90px;
+  /* Scoped under .level-breakdown (not bare .level-breakdown-column etc.)
+     since those same class names are also used, unscoped, by the compact
+     overlay's own columnar breakdown (.level-breakdown-columns .level-
+     breakdown-column - see further up) with much smaller, overlay-tuned
+     sizing - scoping here keeps this dashboard-sized version from
+     clobbering that one via shared class names. */
+  .level-breakdown .level-breakdown-column {
+    flex: 0 0 auto;
+    min-width: 7.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border-top: 3px solid var(--area-color);
+    padding-top: 6px;
+  }
+
+  .level-breakdown .level-breakdown-column-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--area-color);
+    font-weight: 700;
+    font-size: 1.05em;
+    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+
+  /* The area's own overall split time (e.g. "0:28" for Mines) next to its
+     column header - Mines/Jungle/Ice Caves get it straight from the PB
+     Splits data (liveSplitsFromRunState tracks a clean whole-area time
+     for those three); Temple and Hell don't have their own single split
+     key there (combined with Olmec/Yama instead), so renderLevelBreakdownInto
+     derives the same cumulative value itself from each area's last level. */
+  .level-breakdown-area-split {
+    color: var(--mr-muted);
+    font-weight: 400;
+    font-size: 0.8em;
+  }
+
+  .level-breakdown .level-breakdown-row {
+    white-space: nowrap;
+    line-height: 1.15;
   }
 
   .level-breakdown-row.missing {
@@ -1744,8 +1839,6 @@
   <img src="frog.ico" alt="Back to dashboard" id="compactFrogIcon">
 </a>
 
-<button id="settingsToggle">PBs</button>
-
 <div id="settingsPanel">
   <h1>
     <img src="frog.ico" alt="" id="frogIcon">PB Tracker <span id="versionBadge" class="version-badge"></span>
@@ -1832,25 +1925,35 @@
           <option value="anyHell">Chain Hell%</option>
           <option value="max">Max Any%</option>
           <option value="maxHell">Max Chain Hell%</option>
+          <option value="noTpNoGoldHauntedMaxPacifistChainHell">No TP No Gold Haunted Max Pacifist Chain Hell%</option>
         </select>
       </div>
       <button type="button" class="copy-btn customize-toggle secondary-btn">Customize Layout</button>
       <div class="link-opts customize-body hidden">
-        <label><input type="checkbox" id="obsCategoryCheck"> Category?</label>
-        <label><input type="checkbox" id="obsSplitsCheck"> Show PB Splits?</label>
-        <label><input type="checkbox" id="obsRankCheck"> Rank?</label>
-        <label><input type="checkbox" id="obsPbCheck"> PB Time? (Bottom Right)</label>
-        <label><input type="checkbox" id="obsRatingCheck"> Rating?</label>
-        <label><input type="checkbox" id="obsWrSplitsCheck"> Show WR Splits?</label>
-        <label><input type="checkbox" id="obsDateCheck"> Date PB Accomplished?</label>
-        <label><input type="checkbox" id="obsWrTimeCheck"> WR Time? (Bottom Right)</label>
-        <label><input type="checkbox" id="obsLevelBreakdownCheck"> Show All Levels?</label>
-        <div class="splits-total-toggle-group">
-          <label><input type="checkbox" id="obsSplitsTotalCheck"> Include PB/WR Under Splits?</label>
-          <div class="sub-toggle-row">
-            <label class="sub-toggle"><input type="checkbox" id="obsWrHolderCheck"> WR Holder?</label>
-            <label class="sub-toggle"><input type="checkbox" id="obsSplitsTotalRankCheck"> w/ Rank?</label>
+        <div class="link-opts-column">
+          <label><input type="checkbox" id="obsCategoryCheck"> Category?</label>
+          <label><input type="checkbox" id="obsSplitsCheck"> Show PB Splits?</label>
+          <label><input type="checkbox" id="obsWrSplitsCheck"> Show WR Splits?</label>
+          <div class="toggle-group">
+            <label><input type="checkbox" id="obsSplitsTotalCheck"> Include PB & WR Under Splits?</label>
+            <div class="sub-toggle-row">
+              <label class="sub-toggle"><input type="checkbox" id="obsSplitsTotalRankCheck"> w/ Rank?</label>
+              <label class="sub-toggle"><input type="checkbox" id="obsWrHolderCheck"> WR Holder?</label>
+            </div>
           </div>
+        </div>
+        <div class="link-opts-column">
+          <div class="toggle-group">
+            <label><input type="checkbox" id="obsLevelBreakdownCheck"> Show All Levels?</label>
+            <div class="sub-toggle-row">
+              <label class="sub-toggle"><input type="checkbox" id="obsLevelBreakdownCompactCheck"> Compact?</label>
+            </div>
+          </div>
+          <label><input type="checkbox" id="obsPbCheck"> PB Time?</label>
+          <label><input type="checkbox" id="obsWrTimeCheck"> WR Time?</label>
+          <label><input type="checkbox" id="obsRankCheck"> Rank?</label>
+          <label><input type="checkbox" id="obsRatingCheck"> Rating?</label>
+          <label><input type="checkbox" id="obsDateCheck"> Date PB Accomplished?</label>
         </div>
       </div>
       <div class="obs-preview-controls">
@@ -2049,6 +2152,9 @@
   // Opt-in (unlike the other compact toggles above, which default ON) -
   // a glance/debug view, not part of the overlay's normal output.
   const showLevelBreakdown = urlParams.get("levelbreakdown") === "1";
+  // Sub-option of showLevelBreakdown (see obsLevelBreakdownCompactCheck) -
+  // strips it down to bare level times, no header/level labels.
+  const showLevelBreakdownCompact = urlParams.get("levelbreakdowncompact") === "1";
   // Opt-in - a compact "PB: X" / "WR: X" pair placed right under the
   // splits grid with the category's own overall PB/WR time (see
   // paintCorners/renderSplitsTotalCompact), off by default same as every
@@ -2125,6 +2231,30 @@
   function isHellCategory(category) {
     return /hell|eggplant|shield|bookskip|chain|yama|udjat|ankh|hedjet|scepter|book of the dead|amulet|snowball|landmine|basejump/i
       .test(category) || EXTRA_HELL_CATEGORIES.has(category);
+  }
+  // NOT the same set as isHellCategory above - a "chain" category's route
+  // genuinely requires City of Gold (Temple's 4-3 door) on the way to
+  // Hell, and Big Money needs it by definition, but every OTHER hell
+  // category reaches Hell via the Olmec skip instead (confirmed live - a
+  // "Low% Hell"-style run never sets foot in City of Gold at all), so
+  // calling 4-3 "City of Gold" for them would be wrong - see
+  // levelSlotLabel, the only place this is used.
+  function isCityOfGoldCategory(category) {
+    return /chain/i.test(category) || category === "Big Money";
+  }
+  // The category tracker (HD Toolbox's own feed) never recognizes Big
+  // Money as its own category - it looks just like any other hell route
+  // until the City of Gold detour actually happens, which the tracker
+  // has no way to see. This overrides to "Big Money" instead, regardless
+  // of what the category tracker itself reported, whenever bigMoneyDetected
+  // is set (see its own declaration below for how/when that happens). No
+  // separate hell-category check needed here - City of Gold is only ever
+  // reachable on a hell run to begin with, so bigMoneyDetected being true
+  // already implies it. Only ever meaningful for the LIVE currentCategory
+  // (there's no equivalent signal in the OBS Live Preview's own sample
+  // scenarios, which don't need it).
+  function effectiveCategory(category) {
+    return category && bigMoneyDetected ? "Big Money" : category;
   }
   function isMaxCategory(category) {
     return /max/i.test(category);
@@ -2255,6 +2385,20 @@
   // a later attempt in the same category streak always gets its own
   // resolution instead of reusing an earlier one's.
   let maxWormVariant = null;
+
+  // Sticky per-attempt, same reset lifecycle as maxWormVariant above
+  // (cleared on "Death%" and on a fresh run's own empty run_state, see
+  // the Session branch's own update site). Watched unconditionally
+  // (every poll, no category check) - gating this on the category
+  // tracker reporting a hell category first was tried and found to race
+  // it: the tracker can still be mid-classifying the run (hasn't
+  // committed to a hell-shaped name yet) at the exact moment the player
+  // is inside City of Gold, silently missing the one window this can
+  // ever fire in. Unneeded anyway - City of Gold is only reachable on a
+  // hell run to begin with, so there's nothing a category check would
+  // actually rule out.
+  let bigMoneyDetected = false;
+  const BIG_MONEY_THRESHOLD = 100_000;
   // animation, per corner-pair (overlayEls vs previewEls each get their
   // own map so one doesn't suppress the other's animation) - cleared
   // whenever that corner-pair has no live splits at all (a fresh run, or
@@ -2793,6 +2937,23 @@
     if (prevSnapshot && typeof runState.time === "number" && runState.time < prevSnapshot.time) {
       prevSnapshot = null;
     }
+    // A latched completion can be retroactively wrong - confirmed live:
+    // the Olmec "hell skip" door marks the Temple/Olmec area complete
+    // immediately, but HD Toolbox's own category classifier only catches
+    // up to "<category> Hell" once the level transition into Hell
+    // finishes and the player starts actually playing it - a player-paced
+    // transition with no fixed duration, so there's no safe delay to
+    // just wait out instead (see renderDisplay's own cleanup of whatever
+    // this speculatively recorded into Session PBs). Re-checking here,
+    // every render, against whatever category is CURRENT now (not just
+    // once at capture) means a false positive drops itself the moment
+    // the real category arrives and its own finish line (area 4, not 3)
+    // isn't actually done yet - instead of staying latched for the rest
+    // of the run and blocking the real completion from ever being
+    // captured.
+    if (prevSnapshot && prevSnapshot.category !== category && !isRunComplete(category, runState)) {
+      prevSnapshot = null;
+    }
     if (prevSnapshot) return prevSnapshot;
     if (category && isRunComplete(category, runState)) {
       // Read the LAST area's own frozen time_pace, not the top-level
@@ -2936,8 +3097,6 @@
   const obsPreviewStage = document.getElementById("obsPreviewStage");
   const obsTextOpacityInput = document.getElementById("obsTextOpacityInput");
   const obsFlashOpacityCheck = document.getElementById("obsFlashOpacityCheck");
-  const settingsToggle = document.getElementById("settingsToggle");
-  const settingsPanel = document.getElementById("settingsPanel");
   const versionBadge = document.getElementById("versionBadge");
   const updateBanner = document.getElementById("updateBanner");
   const updateApplyBtn = document.getElementById("updateApplyBtn");
@@ -3016,6 +3175,7 @@
   const obsRatingCheck = document.getElementById("obsRatingCheck");
   const obsDateCheck = document.getElementById("obsDateCheck");
   const obsLevelBreakdownCheck = document.getElementById("obsLevelBreakdownCheck");
+  const obsLevelBreakdownCompactCheck = document.getElementById("obsLevelBreakdownCompactCheck");
   const obsSplitsTotalCheck = document.getElementById("obsSplitsTotalCheck");
   const obsWrHolderCheck = document.getElementById("obsWrHolderCheck");
   const obsSplitsTotalRankCheck = document.getElementById("obsSplitsTotalRankCheck");
@@ -3056,6 +3216,7 @@
   obsRatingCheck.checked = !!linkOpts.obsRating;
   obsDateCheck.checked = !!linkOpts.obsDate;
   obsLevelBreakdownCheck.checked = !!linkOpts.obsLevelBreakdown;
+  obsLevelBreakdownCompactCheck.checked = !!linkOpts.obsLevelBreakdownCompact;
   obsSplitsTotalCheck.checked = !!linkOpts.obsSplitsTotal;
   obsWrHolderCheck.checked = linkOpts.obsWrHolder !== false;
   obsSplitsTotalRankCheck.checked = !!linkOpts.obsSplitsTotalRank;
@@ -3092,6 +3253,7 @@
       `&rating=${obsRatingCheck.checked ? 1 : 0}` +
       `&date=${obsDateCheck.checked ? 1 : 0}` +
       `&levelbreakdown=${obsLevelBreakdownCheck.checked ? 1 : 0}` +
+      `&levelbreakdowncompact=${obsLevelBreakdownCompactCheck.checked ? 1 : 0}` +
       `&splitstotal=${obsSplitsTotalCheck.checked ? 1 : 0}` +
       `&wrholder=${obsWrHolderCheck.checked ? 1 : 0}` +
       `&splitstotalrank=${obsSplitsTotalRankCheck.checked ? 1 : 0}` +
@@ -3130,6 +3292,7 @@
       obsRating: obsRatingCheck.checked,
       obsDate: obsDateCheck.checked,
       obsLevelBreakdown: obsLevelBreakdownCheck.checked,
+      obsLevelBreakdownCompact: obsLevelBreakdownCompactCheck.checked,
       obsSplitsTotal: obsSplitsTotalCheck.checked,
       obsWrHolder: obsWrHolderCheck.checked,
       obsSplitsTotalRank: obsSplitsTotalRankCheck.checked,
@@ -3158,8 +3321,8 @@
 
   [
     obsSplitsCheck, obsWrSplitsCheck, obsCurrentSplitsCheck, obsCategoryCheck, obsPbCheck, obsWrTimeCheck,
-    obsRankCheck, obsRatingCheck, obsDateCheck, obsLevelBreakdownCheck, obsSplitsTotalCheck, obsWrHolderCheck,
-    obsSplitsTotalRankCheck,
+    obsRankCheck, obsRatingCheck, obsDateCheck, obsLevelBreakdownCheck, obsLevelBreakdownCompactCheck,
+    obsSplitsTotalCheck, obsWrHolderCheck, obsSplitsTotalRankCheck,
     obsPreviewExampleSelect, obsFlashOpacityCheck,
     obsLivesplitAnimationsCheck, obsLivesplitShowPbDeltaCheck, obsLivesplitShowWrDeltaCheck,
     obsLivesplitIncludeIlCheck, obsLivesplitHideMinuteZeroCheck,
@@ -3854,16 +4017,21 @@
   // Shared by renderLevelBreakdownInto and renderLevelBreakdownColumns -
   // Ice Caves' own extra slots 4-5 are Mothership's 2 levels, not real
   // "3-5"/"3-6" ground levels; 4-3 (area index 3, slot 2) is only City of
-  // Gold on hell runs, the label switches back to "4-3" the moment the
-  // category does too.
+  // Gold for a "chain"/Big Money category (see isCityOfGoldCategory) -
+  // every other category, hell or not, gets plain "4-3" here.
   function levelSlotLabel(areaIdx, slot, category) {
     if (areaIdx === 2 && slot === 4) return "Mothership";
     if (areaIdx === 2 && slot === 5) return "3-4.2";
-    if (areaIdx === 3 && slot === 2 && isHellCategory(category)) return "City of Gold";
+    if (areaIdx === 3 && slot === 2 && isCityOfGoldCategory(category)) return "City of Gold";
     return `${areaIdx + 1}-${slot + 1}`;
   }
 
-  function renderLevelBreakdownInto(container, areas, category) {
+  // areas: the run's levelBreakdown (see maybeRecordSessionPb). splits:
+  // that same run's own PB Splits dict (entry.splits / pbs[name].splits)
+  // - optional, only used for the per-area split time shown in each
+  // column's header (see .level-breakdown-area-split); the per-level
+  // rows below it render fine without it.
+  function renderLevelBreakdownInto(container, areas, category, splits) {
     container.innerHTML = "";
     if (!areas || !areas.some((a) => a)) {
       container.textContent = "No level breakdown saved for this PB.";
@@ -3872,6 +4040,35 @@
     for (let areaIdx = 0; areaIdx < areas.length; areaIdx++) {
       const area = areas[areaIdx];
       if (!area || !Array.isArray(area.levels)) continue;
+      const info = AREA_INFO[areaIdx];
+      const column = document.createElement("div");
+      column.className = "level-breakdown-column";
+      column.style.setProperty("--area-color", info.color);
+      const header = document.createElement("div");
+      header.className = "level-breakdown-column-header";
+      const headerName = document.createElement("span");
+      headerName.textContent = info.name;
+      header.appendChild(headerName);
+      let areaSplit = splits && splits[info.name];
+      // No single whole-area key exists for Temple/Hell in the splits
+      // dict - they're combined with Olmec/Yama there (see
+      // liveSplitsFromRunState's own comments on area index 3/4) - so
+      // derive the same cumulative-since-run-start value directly from
+      // the area's own last level (Olmec/"4-4", Yama/"5-4") instead of
+      // leaving the header blank like Mines/Jungle/Ice Caves would.
+      if (!areaSplit && (areaIdx === 3 || areaIdx === 4)) {
+        const lastLevel = area.levels[3];
+        if (lastLevel && !lastLevel.skipped && typeof lastLevel.time_pace === "number") {
+          areaSplit = formatSecondsWithPrecision(lastLevel.time_pace / 1000, "thousandths");
+        }
+      }
+      if (areaSplit) {
+        const splitSpan = document.createElement("span");
+        splitSpan.className = "level-breakdown-area-split";
+        splitSpan.textContent = areaSplit;
+        header.appendChild(splitSpan);
+      }
+      column.appendChild(header);
       const slotCount = area.levels.slice(4).some((lv) => lv) ? 6 : 4;
       for (let slot = 0; slot < slotCount; slot++) {
         const lv = area.levels[slot];
@@ -3880,8 +4077,9 @@
         const row = document.createElement("div");
         row.className = "level-breakdown-row" + (lv ? "" : " missing");
         row.textContent = lv ? `${label}: ${floorToFixed(lv.time / 1000, 2)}s` : `${label}: MISSING`;
-        container.appendChild(row);
+        column.appendChild(row);
       }
+      container.appendChild(column);
     }
   }
 
@@ -3895,7 +4093,7 @@
   // around as areas complete. Hell is the exception: it only ever exists
   // on a hell category, so its column is skipped entirely otherwise
   // instead of sitting there empty.
-  function renderLevelBreakdownColumns(container, runState, category) {
+  function renderLevelBreakdownColumns(container, runState, category, compactLevels) {
     container.innerHTML = "";
     const areas = runState && Array.isArray(runState.areas) ? runState.areas : [];
     const isHell = isHellCategory(category);
@@ -3903,6 +4101,10 @@
     // below) doesn't fit the stream overlay's vertical space at the normal
     // size, so shrink everything down a notch whenever it's showing.
     container.classList.toggle("has-hell", isHell);
+    // Opt-in (see obsLevelBreakdownCompactCheck) - drops the area header
+    // and per-row level label entirely, leaving just the bare times (see
+    // the .compact-levels CSS for the rest of the stripped-down look).
+    container.classList.toggle("compact-levels", !!compactLevels);
     for (let areaIdx = 0; areaIdx < AREA_INFO.length; areaIdx++) {
       if (AREA_INFO[areaIdx].name === "Hell" && !isHell) continue;
       const info = AREA_INFO[areaIdx];
@@ -3910,19 +4112,26 @@
       const column = document.createElement("div");
       column.className = "level-breakdown-column";
       column.style.setProperty("--area-color", info.color);
-      const header = document.createElement("div");
-      header.className = "level-breakdown-column-header";
-      header.textContent = info.name;
-      column.appendChild(header);
+      if (!compactLevels) {
+        const header = document.createElement("div");
+        header.className = "level-breakdown-column-header";
+        header.textContent = info.name;
+        column.appendChild(header);
+      }
       const levels = area && Array.isArray(area.levels) ? area.levels : [];
       const slotCount = levels.slice(4).some((lv) => lv) ? 6 : 4;
       for (let slot = 0; slot < slotCount; slot++) {
         const lv = levels[slot];
         if (lv && lv.skipped) continue;
-        const label = levelSlotLabel(areaIdx, slot, category);
+        if (compactLevels && !lv) continue; // no placeholder dash - blank levels just aren't shown
         const row = document.createElement("div");
         row.className = "level-breakdown-row" + (lv ? "" : " missing");
-        row.textContent = lv ? `${label}: ${floorToFixed(lv.time / 1000, 2)}s` : `${label}: —`;
+        if (compactLevels) {
+          row.textContent = `${floorToFixed(lv.time / 1000, 2)}s`;
+        } else {
+          const label = levelSlotLabel(areaIdx, slot, category);
+          row.textContent = lv ? `${label}: ${floorToFixed(lv.time / 1000, 2)}s` : `${label}: —`;
+        }
         column.appendChild(row);
       }
       container.appendChild(column);
@@ -3970,6 +4179,59 @@
     container.style.fontSize = (scale * 100) + "%";
   }
 
+  // Counterpart to applyLevelBreakdownScale above, for the Compact?
+  // variant (see obsLevelBreakdownCompactCheck) - that one wants a fixed
+  // small size, not grown to fill the space, but still needs to sit
+  // somewhere now that it's pinned via position:fixed/top instead of
+  // flowing above the PB/Rank/Date block (see .compact-levels CSS).
+  // Centers it in the gap between the very top of the page/stage and the
+  // top of that block, recomputed every render since the block's own
+  // height changes with how many of PB/Rank/Rating/Date/WR Time are on.
+  // Because the breakdown no longer sits inside corner's own flex flow,
+  // corner.offsetHeight here is already just that block's height - no
+  // need to subtract the breakdown's own height out of it like above.
+  function centerCompactLevelBreakdown(container, stageHeightPx) {
+    const corner = container.parentElement;
+    if (!corner || !stageHeightPx) return;
+    container.style.top = "";
+    const naturalHeight = container.offsetHeight;
+    if (!naturalHeight) return; // nothing rendered into it
+    const BOTTOM_MARGIN = 20; // matches .corner's own bottom:20px
+    const TOP_BUFFER = 12; // breathing room off the very top edge
+    const pbBlockTop = stageHeightPx - BOTTOM_MARGIN - corner.offsetHeight;
+    const top = Math.max(TOP_BUFFER, (pbBlockTop - naturalHeight) / 2);
+    container.style.top = top + "px";
+  }
+
+  // The category name has no upper length limit (MossRanking categories
+  // stack modifiers freely - "No Teleporter No Gold Haunted Max Pacifist
+  // Chain Hell%" is a real one) but .category's font-size is fixed at a
+  // large 2.6em for the normal case, so a long enough name would either
+  // run past the edge of the overlay or wrap onto an ugly oversized
+  // second line. Shrinks it down - measurement-based, like
+  // applyLevelBreakdownScale above - only when it's actually too wide for
+  // the available space; a short category keeps its full normal size.
+  // Never grows past 100%, only ever shrinks. stageWidthPx is the
+  // overlay's own full width to measure against - window.innerWidth for
+  // the real overlay, the OBS Live Preview's own native stage pixel
+  // width for the preview (same native-vs-scaled-preview reasoning as
+  // applyLevelBreakdownScale's stageHeightPx).
+  function applyCategoryScale(categoryLine, stageWidthPx) {
+    if (!stageWidthPx) return;
+    categoryLine.style.fontSize = "";
+    const naturalWidth = categoryLine.scrollWidth;
+    if (!naturalWidth) return;
+    const SIDE_MARGIN = 20; // matches .bottom-left's own left:20px
+    const maxWidth = Math.min(stageWidthPx * 0.45, stageWidthPx - SIDE_MARGIN * 2);
+    const scale = Math.max(0.45, Math.min(1, maxWidth / naturalWidth));
+    // In em, not %: .category's own font-size is a fixed 2.6em (not 1em
+    // like .level-breakdown-columns above, which is why that one can get
+    // away with a plain percentage) - a percentage here would resolve
+    // against the PARENT's font-size instead of this 2.6em base, scaling
+    // from the wrong starting point entirely.
+    categoryLine.style.fontSize = (scale * 2.6) + "em";
+  }
+
   // Called once per freshly-captured completedRunSnapshot (see
   // renderDisplay) - if that completion actually beat the category's
   // stored PB (same .ahead check the "New PB!" banner itself uses, so
@@ -3986,6 +4248,13 @@
       splits: liveSplitsFromRunState(runState, "thousandths") || {},
       levelBreakdown: runState && Array.isArray(runState.areas) ? JSON.parse(JSON.stringify(runState.areas)) : null,
       detectedAt: Date.now(),
+      // Not shown anywhere - lets renderDisplay find and remove this
+      // exact entry again if the completion it came from later turns out
+      // to have been premature (see nextCompletedRunSnapshot's own
+      // comment on the Olmec hell-skip door) without touching any other
+      // entry, including an earlier legitimate completion of the same
+      // category.
+      provisionalSnapshot: snapshot,
     });
     renderSessionPbBanner();
     if (!sessionPbReviewSection.classList.contains("hidden")) renderSessionPbReview();
@@ -4114,7 +4383,7 @@
         breakdownBtn.addEventListener("click", () => {
           const isHidden = breakdownBody.classList.contains("hidden");
           if (isHidden) {
-            renderLevelBreakdownInto(breakdownBody, entry.levelBreakdown, entry.category);
+            renderLevelBreakdownInto(breakdownBody, entry.levelBreakdown, entry.category, entry.splits);
             breakdownBody.classList.remove("hidden");
             breakdownBtn.textContent = "Hide Level Breakdown";
           } else {
@@ -4735,10 +5004,36 @@
 
   function renderDisplay() {
     // Updated once per incoming message, before paintCorners (which just
-    // reads whatever completedRunSnapshot currently holds) runs.
-    const lookupCategory = currentCategory ? resolveCategoryForData(currentCategory) : null;
+    // reads whatever completedRunSnapshot currently holds) runs. Resolved
+    // from effectiveCategory (not currentCategory directly) so a detected
+    // Big Money run (see its own doc comment) overrides every downstream
+    // lookup/display here, not just the category line itself.
+    const displayCategory = effectiveCategory(currentCategory);
+    const lookupCategory = displayCategory ? resolveCategoryForData(displayCategory) : null;
     const prevCompletedRunSnapshot = completedRunSnapshot;
     completedRunSnapshot = nextCompletedRunSnapshot(completedRunSnapshot, lookupCategory, currentRunState);
+    // A latched snapshot can now get dropped mid-run instead of only at
+    // the next run's own start (see nextCompletedRunSnapshot's own
+    // retroactive-invalidation check, for the Olmec hell-skip door) -
+    // that specific case (areas still present, category actually moved
+    // on) means the completion it represented was never real, so
+    // whatever it speculatively pushed into Session PBs needs to come
+    // back out too. A snapshot instead clearing because a genuinely NEW
+    // run started is the normal, expected lifecycle - its own Session
+    // PBs entry (if any) was for a real completion and stays untouched.
+    const areasStillPresent =
+      currentRunState && Array.isArray(currentRunState.areas) && currentRunState.areas.some((a) => a != null);
+    if (
+      prevCompletedRunSnapshot && completedRunSnapshot !== prevCompletedRunSnapshot &&
+      areasStillPresent && prevCompletedRunSnapshot.category !== lookupCategory
+    ) {
+      const staleIdx = sessionPbs.findIndex((entry) => entry.provisionalSnapshot === prevCompletedRunSnapshot);
+      if (staleIdx !== -1) {
+        sessionPbs.splice(staleIdx, 1);
+        renderSessionPbBanner();
+        if (!sessionPbReviewSection.classList.contains("hidden")) renderSessionPbReview();
+      }
+    }
     // nextCompletedRunSnapshot only ever constructs a NEW object on the
     // one render where a run's own completion is first captured (every
     // other path returns the same reference, or null) - exactly the
@@ -4755,11 +5050,34 @@
     paintCorners(overlayEls, {
       showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
       showSplitsTotal, showWrHolder, showSplitsTotalRank,
+      category: displayCategory,
     });
+    applyCategoryScale(categoryLine, window.innerWidth);
     if (showLevelBreakdown) {
       levelBreakdownColumns.classList.add("shown");
-      renderLevelBreakdownColumns(levelBreakdownColumns, currentRunState, lookupCategory);
-      applyLevelBreakdownScale(levelBreakdownColumns, window.innerHeight);
+      renderLevelBreakdownColumns(levelBreakdownColumns, currentRunState, lookupCategory, showLevelBreakdownCompact);
+      // Auto-fit scaling is for the real (bottom-anchored corner) stream
+      // overlay only - compact mode lays this out completely differently
+      // (wrapped columns, not a single corner stack - see its own
+      // body.compact CSS), so the overlay's own math doesn't apply there.
+      // showLevelBreakdownCompact is excluded too - it wants a small fixed
+      // size (see .compact-levels .level-breakdown-row) regardless of how
+      // much vertical room its much shorter content leaves free, not
+      // grown to fill it - it's instead centered in that space (see
+      // centerCompactLevelBreakdown). body.compact resets both since it
+      // lays this out completely differently (wrapped columns, not a
+      // single corner stack - see its own body.compact CSS), so neither
+      // the overlay's own scale/position math applies there.
+      if (document.body.classList.contains("compact")) {
+        levelBreakdownColumns.style.fontSize = "";
+        levelBreakdownColumns.style.top = "";
+      } else if (showLevelBreakdownCompact) {
+        levelBreakdownColumns.style.fontSize = "";
+        centerCompactLevelBreakdown(levelBreakdownColumns, window.innerHeight);
+      } else {
+        applyLevelBreakdownScale(levelBreakdownColumns, window.innerHeight);
+        levelBreakdownColumns.style.top = "";
+      }
     } else {
       levelBreakdownColumns.classList.remove("shown");
     }
@@ -4805,6 +5123,42 @@
     ] },
     null, null, null,
   ];
+  // Separate from MINES_JUNGLE_LEVELS above (which feeds the PB/WR
+  // "splits" grid's live delta comparison, and stays untouched) - used
+  // only for the level breakdown preview below (see renderPreview) so it
+  // can show every area filled with a completed time, without changing
+  // what the splits grid itself displays. Hell only ever renders for the
+  // hell-category scenarios anyway (see renderLevelBreakdownColumns' own
+  // isHell gating), so reusing the Hell row across any/anyHell/max/
+  // maxHell here is harmless. Ice Caves' Worm/Mothership slots 4-5 are
+  // Max-only though - a plain Any%/Chain Hell% run never reaches them -
+  // so that area gets its own non-Max version with just 4 levels.
+  const ALL_AREA_LEVELS = [
+    { completed: true, time_pace: 28000, levels: [
+      { time: 6500 }, { time: 7200 }, { time: 6800 }, { time: 7500 },
+    ] },
+    { completed: true, time_pace: 51000, levels: [
+      { time: 5500 }, { time: 6200 }, { time: 5800 }, { time: 5500 },
+    ] },
+    { completed: true, time_pace: 70000, levels: [
+      { time: 6000 }, { time: 7400 }, { time: 6600 }, { time: 7800 },
+    ] },
+    { completed: true, time_pace: 95000, levels: [
+      { time: 8200 }, { time: 7600 }, { time: 8800 }, { time: 7200 },
+    ] },
+    { completed: true, time_pace: 140000, levels: [
+      { time: 10500 }, { time: 9800 }, { time: 11200 }, { time: 95000 },
+    ] },
+  ];
+  const ALL_AREA_LEVELS_MAX = [
+    ALL_AREA_LEVELS[0],
+    ALL_AREA_LEVELS[1],
+    { completed: true, time_pace: 70000, levels: [
+      { time: 6000 }, { time: 7400 }, { time: 6600 }, { time: 7800 }, { time: 12000 }, { time: 9500 },
+    ] },
+    ALL_AREA_LEVELS[3],
+    ALL_AREA_LEVELS[4],
+  ];
   const SAMPLE_SCENARIOS = {
     any: {
       category: "Any%",
@@ -4815,6 +5169,7 @@
       wr: { time: "1:28.500", player: "SampleRunner" },
       wrSplits: { "Mines": "0:29", "Jungle": "0:47", "Ice Caves": "1:00", "Temple (4-3)": "1:12", "Olmec": "20s" },
       runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
+      levelBreakdownAreas: ALL_AREA_LEVELS,
     },
     anyHell: {
       category: "Chain Hell%",
@@ -4831,6 +5186,7 @@
         "Hell Entry": "1:22", "Hell (5-3)": "3:05", "Yama": "33s",
       },
       runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
+      levelBreakdownAreas: ALL_AREA_LEVELS,
     },
     max: {
       category: "Max Any%",
@@ -4847,6 +5203,7 @@
         "Ice Caves": "1:15", "Temple (4-3)": "1:30", "Olmec": "21s",
       },
       runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
+      levelBreakdownAreas: ALL_AREA_LEVELS_MAX,
     },
     maxHell: {
       category: "Max Chain Hell%",
@@ -4865,6 +5222,26 @@
         "Hell Entry": "1:38", "Hell (5-3)": "3:32", "Yama": "36s",
       },
       runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
+      levelBreakdownAreas: ALL_AREA_LEVELS_MAX,
+    },
+    noTpNoGoldHauntedMaxPacifistChainHell: {
+      category: "No Teleporter No Gold Haunted Max Pacifist Chain Hell%",
+      pb: {
+        time: "20:09.997", rank: 32, rating: "50.76%", date: "2026-10-16",
+        splits: {
+          "Mines": "0:55", "Jungle": "5:16", "Worm": "6:40", "Mothership": "8:06",
+          "Ice Caves": "8:29", "Temple (4-3)": "12:08", "Olmec": "1:47",
+          "Hell Entry": "15:07", "Hell (5-3)": "16:13", "Yama": "3:56",
+        },
+      },
+      wr: { time: "14:02.300", player: "SampleRunner" },
+      wrSplits: {
+        "Mines": "0:48", "Jungle": "4:50", "Worm": "6:05", "Mothership": "7:22",
+        "Ice Caves": "7:40", "Temple (4-3)": "10:55", "Olmec": "1:32",
+        "Hell Entry": "13:05", "Hell (5-3)": "13:55", "Yama": "3:20",
+      },
+      runState: { time: 51000, areas: MINES_JUNGLE_LEVELS },
+      levelBreakdownAreas: ALL_AREA_LEVELS_MAX,
     },
   };
   function currentSampleScenario() {
@@ -4904,10 +5281,20 @@
       includeIl: obsLivesplitIncludeIlCheck.checked,
       hideZero: obsLivesplitHideMinuteZeroCheck.checked,
     });
+    applyCategoryScale(previewCategoryLine, obsPreviewImg.naturalWidth);
     if (obsLevelBreakdownCheck.checked) {
       previewLevelBreakdownColumns.classList.add("shown");
-      renderLevelBreakdownColumns(previewLevelBreakdownColumns, scenario.runState, scenario.category);
-      applyLevelBreakdownScale(previewLevelBreakdownColumns, obsPreviewImg.naturalHeight);
+      renderLevelBreakdownColumns(previewLevelBreakdownColumns, { areas: scenario.levelBreakdownAreas }, scenario.category, obsLevelBreakdownCompactCheck.checked);
+      // Compact wants a small fixed size, centered in the space above
+      // the PB/Rank/Date block instead of auto-fit-grown - see the
+      // matching gate in renderDisplay.
+      if (obsLevelBreakdownCompactCheck.checked) {
+        previewLevelBreakdownColumns.style.fontSize = "";
+        centerCompactLevelBreakdown(previewLevelBreakdownColumns, obsPreviewImg.naturalHeight);
+      } else {
+        applyLevelBreakdownScale(previewLevelBreakdownColumns, obsPreviewImg.naturalHeight);
+        previewLevelBreakdownColumns.style.top = "";
+      }
     } else {
       previewLevelBreakdownColumns.classList.remove("shown");
     }
@@ -5225,7 +5612,7 @@
       breakdownBtn.addEventListener("click", () => {
         const isHidden = breakdownBody.classList.contains("hidden");
         if (isHidden) {
-          renderLevelBreakdownInto(breakdownBody, levelBreakdown, name);
+          renderLevelBreakdownInto(breakdownBody, levelBreakdown, name, pbs[name].splits);
           breakdownBody.classList.remove("hidden");
           breakdownBtn.textContent = "Hide Level Breakdown";
         } else {
@@ -5408,16 +5795,6 @@
     }
   }
 
-  settingsToggle.addEventListener("click", () => {
-    settingsPanel.classList.toggle("open");
-    if (settingsPanel.classList.contains("open")) {
-      // The preview was sized against a 0-width box while the panel was
-      // closed (compact mode toggles it with display:none) - redo it now
-      // that it's actually visible.
-      layoutPreview();
-    }
-  });
-
   // --- Live connection to the HD Toolbox category tracker ---
   let ws = null;
 
@@ -5443,6 +5820,7 @@
           currentRunState = null;
           completedRunSnapshot = null;
           maxWormVariant = null;
+          bigMoneyDetected = false;
         } else {
           const isMaxNow = isMaxCategory(currentCategory) && !isHellCategory(currentCategory);
           if (!isMaxNow) {
@@ -5490,6 +5868,19 @@
           && !currentRunState.areas.some((a) => a != null);
         if (freshRun) {
           maxWormVariant = null;
+          bigMoneyDetected = false;
+        }
+        // No category check needed (see bigMoneyDetected's own
+        // declaration for why) - just City of Gold + the money threshold.
+        // Sticky once set (no "else" clearing it) - the real criterion,
+        // having grabbed the haul, can't un-happen later in the same
+        // attempt even if money or isCityOfGold read differently on a
+        // later poll.
+        if (
+          currentRunState && currentRunState.isCityOfGold &&
+          currentRunState.money >= BIG_MONEY_THRESHOLD
+        ) {
+          bigMoneyDetected = true;
         }
       } else if (msg.type === "PBsUpdated") {
         // Another connected client (typically your dashboard browser,
@@ -5668,6 +6059,7 @@
       currentCategory = null;
       currentRunState = null;
       maxWormVariant = null;
+      bigMoneyDetected = false;
       renderDisplay();
       setTimeout(connect, 1000);
     };

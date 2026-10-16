@@ -73,11 +73,13 @@ class GameState:
     __slots__ = (
         "screen_state", "level", "total_time_ms",
         "is_mothership", "is_worm", "is_city_of_gold", "respawn_level",
+        "total_money",
     )
 
     def __init__(
         self, screen_state, level, total_time_ms,
         is_mothership, is_worm, is_city_of_gold, respawn_level,
+        total_money,
     ):
         self.screen_state = screen_state
         self.level = level
@@ -86,6 +88,7 @@ class GameState:
         self.is_worm = is_worm
         self.is_city_of_gold = is_city_of_gold
         self.respawn_level = respawn_level
+        self.total_money = total_money
 
 
 class SpelunkyProcess:
@@ -155,10 +158,16 @@ class SpelunkyProcess:
         total_ms = pm.read_double(global_state + 0x445948)
         total_time_ms = total_minutes * 60_000 + total_seconds * 1000 + int(total_ms)
 
+        # The HUD's own $ counter - same offset HD Toolbox's own GameState
+        # reads this from (see this module's own docstring), confirmed
+        # against a live run here too (stable across level transitions,
+        # matching the actual on-screen value).
+        total_money = pm.read_uint(global_state + 0x44592C)
+
         return GameState(
             screen_state=screen_state, level=level, total_time_ms=total_time_ms,
             is_mothership=is_mothership, is_worm=is_worm, is_city_of_gold=is_city_of_gold,
-            respawn_level=respawn_level,
+            respawn_level=respawn_level, total_money=total_money,
         )
 
 
@@ -261,9 +270,10 @@ class RunTracker:
         # from the game's own raw level number.
         self._normal_level_count = 0
 
-    def to_run_state(self, current_total_time_ms):
+    def to_run_state(self, current_total_time_ms, current_total_money):
         return {
             "time": current_total_time_ms,
+            "money": current_total_money,
             "areas": [
                 {
                     "completed": a["completed"], "time_pace": a["time_pace"],
@@ -583,7 +593,16 @@ class SessionTracker:
         self.run.update(gs)
         self._prev_total_time_ms = gs.total_time_ms
         self._prev_respawn_level = gs.respawn_level
-        return self.run.to_run_state(gs.total_time_ms)
+        # Plain live facts, no opinion of their own - category (needed to
+        # know whether a hell run is even in progress, let alone flag it
+        # as Big Money) never reaches this module at all, it only exists
+        # client-side (see index.html's own effectiveCategory/
+        # bigMoneyDetected, which also owns the "only while a hell
+        # category is showing" gate and the sticky-for-the-rest-of-the-run
+        # behavior - this module has no business deciding either).
+        run_state = self.run.to_run_state(gs.total_time_ms, gs.total_money)
+        run_state["isCityOfGold"] = gs.is_city_of_gold
+        return run_state
 
 
 def poll_loop(on_update, on_status, stop_event: threading.Event):
