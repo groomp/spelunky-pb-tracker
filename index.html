@@ -333,6 +333,18 @@
     line-height: 1.05;
   }
 
+  /* The area's own running total (see renderLevelBreakdownColumns) -
+     compact page only, sitting right under the area name header, above
+     1-1. Colored/bold like the header to read as a subtotal, not just
+     another row. */
+  body.compact .level-breakdown-area-cumulative {
+    color: var(--area-color);
+    font-weight: 700;
+    font-size: 0.85em;
+    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+
   .category {
     font-size: 2.6em;
     font-weight: 700;
@@ -375,20 +387,115 @@
     display: none;
   }
 
-  /* "New PB!" + the precise achieved time, under the "PB:" line - only
-     ever filled in when the just-finished run actually beat the stored
-     PB (see paintCorners), so :empty covers every other case the same
-     way .run-complete does. Reuses .split-delta.ahead's green, same
-     "faster than the reference" meaning as everywhere else it's used. */
+  /* "New PB!"/"New WR!" - a shiny, glowing, animated treatment shared by
+     the corner's own banner (under the "PB:" line) AND the compact PB/WR-
+     under-splits block (see renderNewCompletionBanner, the one place both
+     build this same markup/animation from). --glow/--glow-bright default
+     to green (PB); .new-wr overrides them to gold (WR) - see further down.
+     :empty covers the corner's own case the same way .run-complete does
+     (the splits-total block instead removes the element outright when
+     there's nothing to show, see renderSplitsTotalCompact). */
   .new-pb {
+    position: relative;
     font-size: 1.1em;
     font-weight: 700;
     margin-top: 2px;
-    color: #3ddc57;
+    --glow: 61, 220, 87;
+    --glow-bright: 170, 245, 180;
   }
 
   .new-pb:empty {
     display: none;
+  }
+
+  .new-pb.new-wr {
+    --glow: 255, 196, 0;
+    --glow-bright: 255, 225, 140;
+  }
+
+  /* "New WR!" sizing, bigger than this block's own default size in both
+     places it can show on the real overlay/OBS preview (so the shiny
+     text really stands out) - matched to whatever line it's effectively
+     standing in for. The corner's own banner (not the compact PB/WR-
+     under-splits block's .splits-total-wr) matches the PB line right
+     above it (.pb, 1.6em); the splits-total WR line instead matches
+     "Completed Run!" (.run-complete, 1.3em). Explicitly excludes
+     body.compact (the personal glance view) - its own sizing there is
+     unrelated and shouldn't change. */
+  body:not(.compact) .new-pb.new-wr:not(.splits-total-wr) {
+    font-size: 1.6em;
+  }
+
+  body:not(.compact) .splits-total-wr.new-wr {
+    font-size: 1.3em;
+  }
+
+  /* The actual label text lives in this child span instead of directly
+     in .new-pb's own textContent - see renderNewCompletionBanner for why
+     (so updating it on re-render doesn't also wipe out the sibling
+     sparkle spans below mid-animation). Carries the color/glow/pop
+     animation itself (not .new-pb) since the pop's scale() needs a
+     transformable box - see its own comment below. */
+  .new-pb-label {
+    position: relative;
+    /* inline-block, not inline - new-pb-pop-in below scale()s this span,
+       and CSS transforms have no effect on plain inline boxes. */
+    display: inline-block;
+    color: rgb(var(--glow));
+    text-shadow: 0 0 6px rgba(var(--glow), 0.85), 0 0 14px rgba(var(--glow), 0.5);
+    animation: new-pb-glow 1.6s ease-in-out infinite;
+  }
+
+  @keyframes new-pb-glow {
+    0%, 100% {
+      text-shadow: 0 0 6px rgba(var(--glow), 0.85), 0 0 14px rgba(var(--glow), 0.5);
+    }
+    50% {
+      text-shadow: 0 0 10px rgba(var(--glow-bright), 1), 0 0 24px rgba(var(--glow), 0.9);
+    }
+  }
+
+  /* One-shot quick-expand on the instant a fresh PB/WR is detected (see
+     renderNewCompletionBanner) - the glow keeps pulsing underneath it
+     (both named in this single animation list - a second rule setting
+     its own `animation` would replace, not add to, .new-pb-label's), it
+     just doesn't replay on every re-render while the same completion
+     stays shown. */
+  .new-pb.new-pb-pop-in .new-pb-label {
+    animation:
+      new-pb-glow 1.6s ease-in-out infinite,
+      new-pb-pop 0.5s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+  }
+
+  @keyframes new-pb-pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    65% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Firework/sparkle burst around the "New PB!"/"New WR!" text (see
+     spawnNewPbSparkles) - one small glint per sparkle, scattered along
+     the text's width and flying outward to a random point (--dx/--dy,
+     set inline per sparkle) while fading and shrinking, then removed
+     from the DOM once its own animation ends. Colored via the same
+     --glow/--glow-bright pair as the text itself (inherited from
+     whichever .new-pb[.new-wr] this sparkle's a descendant of). */
+  .new-pb-sparkle {
+    position: absolute;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(var(--glow-bright)) 0%, rgb(var(--glow)) 55%, rgba(var(--glow), 0) 75%);
+    pointer-events: none;
+    opacity: 0;
+    animation: new-pb-sparkle-burst 0.7s ease-out forwards;
+  }
+
+  @keyframes new-pb-sparkle-burst {
+    0% { opacity: 1; transform: translate(0, 0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
   }
 
   .splits-block {
@@ -486,7 +593,7 @@
 
   .splits-total-wr {
     font-size: 0.85em;
-    color: #999;
+    color: #ccc;
   }
 
   .split-row .split-time.wr-time {
@@ -724,6 +831,16 @@
 
   #settingsPanel h2 .title-action-btn:last-of-type {
     margin-right: auto;
+  }
+
+  /* Pushes a title-action-btn all the way to the far right of its h2 (see
+     "Dismiss All" on Session PBs) instead of sitting right after the
+     title - overrides :last-of-type's own margin-right:auto above
+     (same specificity, later in the stylesheet) since an auto margin on
+     both sides at once would center it in the leftover space instead. */
+  #settingsPanel h2 .title-action-btn.title-action-btn-right {
+    margin-left: auto;
+    margin-right: 0;
   }
 
   #settingsPanel h3 {
@@ -1357,6 +1474,26 @@
     margin-bottom: 8px;
   }
 
+  /* Extra breathing room above a button row that'd otherwise crowd
+     right up against the one before it (see Load WR Splits, sitting
+     just under Show World Records/Refresh) - .link-row's own
+     margin-bottom only ever spaces things below it, not above. */
+  .link-row-spaced {
+    margin-top: 10px;
+  }
+
+  /* A smaller, more subdued note tucked at the very bottom of a section
+     (see worldRecordsSection) - same italic/muted treatment as
+     .how-to-note, just smaller and out of the way instead of sitting up
+     top alongside the section's main instructions. */
+  .section-footer-note {
+    margin: 14px 0 0;
+    font-size: 0.72em;
+    color: var(--mr-muted);
+    font-style: italic;
+    opacity: 0.85;
+  }
+
   /* Sits right under the OBS Live Preview box - a little breathing room
      so the dropdown doesn't crowd up against it. */
   .example-run-row {
@@ -1855,7 +1992,10 @@
   </div>
 
   <section id="sessionPbReviewSection" class="session-pb-review hidden">
-    <h2>Session PBs</h2>
+    <h2>
+      <span>Session PBs</span>
+      <button id="dismissAllSessionPbsBtn" class="title-action-btn title-action-btn-right">Dismiss All</button>
+    </h2>
     <div id="sessionPbReviewList"></div>
   </section>
 
@@ -2109,7 +2249,7 @@
       </button>
       <span class="inline-hint">Hit refresh to reload all WRs</span>
     </div>
-    <div class="link-row">
+    <div class="link-row link-row-spaced">
       <button id="loadOfficialWrSplitsBtn" class="copy-btn danger-btn">Load WR Splits</button>
     </div>
     <div id="worldRecordsRefreshStatus" class="status-line"></div>
@@ -2120,6 +2260,7 @@
       </div>
       <div id="worldRecordsGlance"></div>
     </div>
+    <p class="section-footer-note">If anyone would like to contribute WR splits for categories outside of Main Speed, send them to Groomp on Discord!</p>
   </section>
 </div>
 
@@ -2386,9 +2527,11 @@
   // resolution instead of reusing an earlier one's.
   let maxWormVariant = null;
 
-  // Sticky per-attempt, same reset lifecycle as maxWormVariant above
-  // (cleared on "Death%" and on a fresh run's own empty run_state, see
-  // the Session branch's own update site). Watched unconditionally
+  // Sticky per-attempt, same reset lifecycle as maxWormVariant above -
+  // cleared only when a fresh run's own empty run_state arrives (see the
+  // Session branch's own update site), NOT on "Death%" (a death keeps
+  // every per-attempt stat exactly as it was - see lastRealCategory
+  // below and renderDisplay's own dataCategory). Watched unconditionally
   // (every poll, no category check) - gating this on the category
   // tracker reporting a hell category first was tried and found to race
   // it: the tracker can still be mid-classifying the run (hasn't
@@ -2399,6 +2542,15 @@
   // actually rule out.
   let bigMoneyDetected = false;
   const BIG_MONEY_THRESHOLD = 100_000;
+  // The last category reported that wasn't "Death%" - everything
+  // data-driven (PB/WR splits, rank, level breakdown, completion
+  // tracking) keeps using this while currentCategory is "Death%" instead
+  // of that literal string, so a death only changes the category LABEL
+  // on screen, not the stats/splits still shown under it (see
+  // renderDisplay's own dataCategory). Updated in ws.onmessage's
+  // "Category" branch, never reset - the next real category simply
+  // overwrites it.
+  let lastRealCategory = null;
   // animation, per corner-pair (overlayEls vs previewEls each get their
   // own map so one doesn't suppress the other's animation) - cleared
   // whenever that corner-pair has no live splits at all (a fresh run, or
@@ -2798,13 +2950,18 @@
     // made area.time unreliable in the first place - so it's safe to
     // read independently, whether or not the whole area (and so Olmec)
     // has finished yet.
-    const temple = areas[3] && Array.isArray(areas[3].levels) ? areas[3].levels[2] : null;
+    let temple = areas[3] && Array.isArray(areas[3].levels) ? areas[3].levels[2] : null;
+    // Dying ON 4-3 itself still leaves a real-looking entry here (see
+    // game_reader.py's _record_level) - that's a death, not a split, so
+    // it's treated the same as never having reached it.
+    if (temple && temple.completed === false) temple = null;
     if (temple) splits["Temple (4-3)"] = msToTime(temple.time_pace);
 
     // Same idea for Hell+Yama (area index 4, hell categories only) -
     // Hell (5-3) is level slot 2 of that area (5-1, 5-2, 5-3, then Yama
     // as 5-4), read the same independent way as Temple (4-3) above.
-    const hell = areas[4] && Array.isArray(areas[4].levels) ? areas[4].levels[2] : null;
+    let hell = areas[4] && Array.isArray(areas[4].levels) ? areas[4].levels[2] : null;
+    if (hell && hell.completed === false) hell = null;
     if (hell) splits["Hell (5-3)"] = msToTime(hell.time_pace);
 
     // IL (individual level) splits - a fight/encounter's OWN duration,
@@ -2824,14 +2981,15 @@
         const area = areas[idx];
         if (!area || !Array.isArray(area.levels)) continue;
         for (const lv of area.levels) {
-          if (lv && lv[flagKey]) return lv;
+          if (lv && lv[flagKey] && lv.completed !== false) return lv;
         }
       }
       return null;
     }
 
     const templeOlmecArea = areas[3];
-    const olmec = templeOlmecArea && Array.isArray(templeOlmecArea.levels) ? templeOlmecArea.levels[3] : null;
+    let olmec = templeOlmecArea && Array.isArray(templeOlmecArea.levels) ? templeOlmecArea.levels[3] : null;
+    if (olmec && olmec.completed === false) olmec = null;
     if (olmec) {
       splits["Olmec"] = durationToTime(olmec.time);
     } else if (templeOlmecArea && templeOlmecArea.completed && temple) {
@@ -2901,7 +3059,18 @@
       const area = runState.areas[i];
       if (!area || !area.completed) return false;
     }
-    return true;
+    // The final area's own completion must have come from an actual
+    // victory screen, not just the ordinary "stepped into the next
+    // level/world" transition (see game_reader.py's via_victory) -
+    // confirmed live: beating Olmec and continuing on into Hell fires
+    // the exact same completed/time_pace write as a genuine Any%/Low%/
+    // No Gold ending AT Olmec, with no way to tell them apart from
+    // those two fields alone. Without this, every hell-skip-style
+    // category (Hell, Bookskip, chain, ...) would briefly read as
+    // complete under its PRE-reclassification name the instant Olmec's
+    // door opens, before HD Toolbox's own category tracker has caught
+    // up to the real one.
+    return !!runState.areas[finalAreaIdx].via_victory;
   }
 
   // run_state.time is HD Toolbox's live, continuously-running clock - it
@@ -2938,20 +3107,19 @@
       prevSnapshot = null;
     }
     // A latched completion can be retroactively wrong - confirmed live:
-    // the Olmec "hell skip" door marks the Temple/Olmec area complete
-    // immediately, but HD Toolbox's own category classifier only catches
-    // up to "<category> Hell" once the level transition into Hell
-    // finishes and the player starts actually playing it - a player-paced
-    // transition with no fixed duration, so there's no safe delay to
-    // just wait out instead (see renderDisplay's own cleanup of whatever
-    // this speculatively recorded into Session PBs). Re-checking here,
-    // every render, against whatever category is CURRENT now (not just
-    // once at capture) means a false positive drops itself the moment
-    // the real category arrives and its own finish line (area 4, not 3)
-    // isn't actually done yet - instead of staying latched for the rest
-    // of the run and blocking the real completion from ever being
-    // captured.
-    if (prevSnapshot && prevSnapshot.category !== category && !isRunComplete(category, runState)) {
+    // HD Toolbox's own category classifier can still catch up to a
+    // hell-skip-style rename ("<category> Hell"/"Bookskip"/"chain"/...)
+    // after this already captured a snapshot under the OLD category
+    // (isRunComplete's own via_victory check, above, closes the main
+    // window for this, but every render re-checks against whatever
+    // category is CURRENT now as a backstop regardless). Dropping
+    // unconditionally on any mismatch - not only when the new category
+    // isn't done yet - means this always falls through to a fresh
+    // capture below under the CURRENT category: still null if that one
+    // genuinely isn't complete, correctly captured if it already is,
+    // rather than ever getting stuck re-returning a stale snapshot
+    // stamped with a category runCompletionCell will only ever reject.
+    if (prevSnapshot && prevSnapshot.category !== category) {
       prevSnapshot = null;
     }
     if (prevSnapshot) return prevSnapshot;
@@ -3111,6 +3279,7 @@
   const reviewSessionPbsBtn = document.getElementById("reviewSessionPbsBtn");
   const sessionPbReviewSection = document.getElementById("sessionPbReviewSection");
   const sessionPbReviewList = document.getElementById("sessionPbReviewList");
+  const dismissAllSessionPbsBtn = document.getElementById("dismissAllSessionPbsBtn");
   // Runs completed THIS page load that beat their category's stored PB
   // (see maybeRecordSessionPb) - resets on reload, same scope as
   // "during your play session" implies. Each entry: {category, time
@@ -4073,10 +4242,15 @@
       for (let slot = 0; slot < slotCount; slot++) {
         const lv = area.levels[slot];
         if (lv && lv.skipped) continue;
+        // A level died on still gets a real-looking entry recorded (see
+        // game_reader.py's _record_level) so the breakdown doesn't go
+        // blank on death - but it was never actually finished, so it's
+        // treated the same as never having been reached at all here.
+        const isMissing = !lv || lv.completed === false;
         const label = levelSlotLabel(areaIdx, slot, category);
         const row = document.createElement("div");
-        row.className = "level-breakdown-row" + (lv ? "" : " missing");
-        row.textContent = lv ? `${label}: ${floorToFixed(lv.time / 1000, 2)}s` : `${label}: MISSING`;
+        row.className = "level-breakdown-row" + (isMissing ? " missing" : "");
+        row.textContent = isMissing ? `${label}: MISSING` : `${label}: ${floorToFixed(lv.time / 1000, 2)}s`;
         column.appendChild(row);
       }
       container.appendChild(column);
@@ -4112,25 +4286,105 @@
       const column = document.createElement("div");
       column.className = "level-breakdown-column";
       column.style.setProperty("--area-color", info.color);
+      const levels = area && Array.isArray(area.levels) ? area.levels : [];
       if (!compactLevels) {
         const header = document.createElement("div");
         header.className = "level-breakdown-column-header";
         header.textContent = info.name;
         column.appendChild(header);
       }
-      const levels = area && Array.isArray(area.levels) ? area.levels : [];
+      // Compact page only (the personal glance view, body.compact) -
+      // not the stream overlay's own compact-levels sub-toggle, which
+      // strips labels entirely rather than adding to them. This area's
+      // own time so far, above 1-1 - the last completed level's own
+      // time_pace is cumulative-since-run-start (see game_reader.py's
+      // _record_level), so the previous area's own time_pace (cumulative
+      // up to the moment THIS area was entered) is subtracted back out to
+      // leave just this area's own duration. Updates live as each level
+      // completes; a death's own entry is excluded (same as the rows
+      // below), so this freezes at whichever level was last actually
+      // finished rather than jumping to the death's own time.
+      if (document.body.classList.contains("compact")) {
+        // Prefer the area's own completed/time_pace once it's done,
+        // rather than trusting the per-level scan below all the way to
+        // the end - Olmec (4-4) and Yama (5-4), the combined area's own
+        // last "level", are confirmed live to not always get their own
+        // per-level entry recorded even though the area itself genuinely
+        // finished (same bug liveSplitsFromRunState's own Olmec/Hell
+        // Entry/Yama fallbacks exist for) - area.time_pace is set the
+        // instant that fight actually ends regardless, so this is the
+        // only way to reliably include it rather than silently stopping
+        // at Temple (4-3)/Hell (5-3) instead.
+        let lastCompletedTimePace = null;
+        if (area && area.completed && typeof area.time_pace === "number") {
+          lastCompletedTimePace = area.time_pace;
+        } else {
+          for (const lv of levels) {
+            if (lv && lv.completed !== false && typeof lv.time_pace === "number") {
+              lastCompletedTimePace = lv.time_pace;
+            }
+          }
+        }
+        const prevArea = areaIdx > 0 ? areas[areaIdx - 1] : null;
+        const prevAreaTimePace = areaIdx === 0 ? 0 : prevArea && typeof prevArea.time_pace === "number" ? prevArea.time_pace : null;
+        const areaTimeMs = lastCompletedTimePace != null && prevAreaTimePace != null
+          ? lastCompletedTimePace - prevAreaTimePace
+          : null;
+        if (areaTimeMs != null && areaTimeMs >= 0) {
+          const areaTime = document.createElement("div");
+          areaTime.className = "level-breakdown-area-cumulative";
+          areaTime.textContent = formatSecondsWithPrecision(areaTimeMs / 1000, "thousandths");
+          column.appendChild(areaTime);
+        }
+      }
       const slotCount = levels.slice(4).some((lv) => lv) ? 6 : 4;
+      const isCompactPage = document.body.classList.contains("compact");
       for (let slot = 0; slot < slotCount; slot++) {
+        // Compact page only - Olmec (4-4) and Yama (5-4) are confirmed
+        // live to not always get their own per-level entry recorded (see
+        // the area-time fallback above), so this slot's generic row
+        // would often just read "MISSING" even on a genuine clear. Falls
+        // back to the area's own completion time minus Temple (4-3)/Hell
+        // (5-3)'s own time_pace, the same derivation liveSplitsFromRunState
+        // already relies on - reliable regardless of whether the
+        // per-level entry exists. Label stays the plain "4-4"/"5-4" slot
+        // name (not "Olmec IL"/"Yama IL") - only the value's derivation
+        // changes, not what it's called.
+        if (isCompactPage && slot === 3 && (areaIdx === 3 || areaIdx === 4)) {
+          const lv = levels[3];
+          let ilMs = lv && lv.completed !== false && typeof lv.time === "number" ? lv.time : null;
+          if (ilMs == null) {
+            const prevLv = levels[2];
+            if (
+              area && area.completed && typeof area.time_pace === "number" &&
+              prevLv && prevLv.completed !== false && typeof prevLv.time_pace === "number"
+            ) {
+              const derivedMs = area.time_pace - prevLv.time_pace;
+              if (derivedMs >= 0) ilMs = derivedMs;
+            }
+          }
+          const label = levelSlotLabel(areaIdx, slot, category);
+          const row = document.createElement("div");
+          row.className = "level-breakdown-row" + (ilMs == null ? " missing" : "");
+          row.textContent = ilMs == null ? `${label}: —` : `${label}: ${floorToFixed(ilMs / 1000, 2)}s`;
+          column.appendChild(row);
+          continue;
+        }
         const lv = levels[slot];
         if (lv && lv.skipped) continue;
-        if (compactLevels && !lv) continue; // no placeholder dash - blank levels just aren't shown
+        // A level died on still gets a real-looking entry recorded (see
+        // game_reader.py's _record_level) so the breakdown doesn't go
+        // blank on death - but it was never actually finished, so it's
+        // treated the same as never having been reached at all here.
+        const isMissing = !lv || lv.completed === false;
+        if (compactLevels && isMissing) continue; // no placeholder dash - blank levels just aren't shown
         const row = document.createElement("div");
-        row.className = "level-breakdown-row" + (lv ? "" : " missing");
+        row.className = "level-breakdown-row" + (isMissing ? " missing" : "");
         if (compactLevels) {
           row.textContent = `${floorToFixed(lv.time / 1000, 2)}s`;
         } else {
           const label = levelSlotLabel(areaIdx, slot, category);
-          row.textContent = lv ? `${label}: ${floorToFixed(lv.time / 1000, 2)}s` : `${label}: —`;
+          row.textContent = isMissing ? `${label}: —` : `${label}: ${floorToFixed(lv.time / 1000, 2)}s`;
         }
         column.appendChild(row);
       }
@@ -4413,6 +4667,18 @@
       sessionPbReviewSection.classList.remove("hidden");
       renderSessionPbReview();
     }
+  });
+
+  // Same confirm()/discard-without-saving semantics as a single card's
+  // own "Dismiss", just for every detected PB in the session at once -
+  // none of them get written to pbs, this only clears the review queue.
+  dismissAllSessionPbsBtn.addEventListener("click", () => {
+    if (sessionPbs.length === 0) return;
+    const count = sessionPbs.length;
+    if (!confirm(`Dismiss all ${count} detected PB${count === 1 ? "" : "s"} without saving them?`)) return;
+    sessionPbs.length = 0;
+    renderSessionPbBanner();
+    closeSessionPbReviewIfEmpty();
   });
 
   // Both Olmec choices start blank (see the form's own "Choose..." default
@@ -4732,9 +4998,53 @@
   // than WR (see .splits-total-compact CSS) - showWrHolder further
   // controls whether the WR line also names who holds it, and
   // showSplitsTotalRank whether the PB line also shows its rank.
-  function renderSplitsTotalCompact(container, pb, wr, showWrHolder, showSplitsTotalRank) {
+  //
+  // isNewPb/isNewWr (see paintCorners) swap the matching line for the
+  // same "New PB!"/"New WR!" shiny treatment the corner's own banner
+  // uses (see renderNewCompletionBanner) - but ONLY when that banner
+  // ISN'T showing it in the corner already. el.newPbText shows EITHER
+  // celebration whenever showPb or showWrTime is on (not each gated by
+  // its own matching toggle independently - see paintCorners), so this
+  // block's own animated lines mirror that same combined condition. This
+  // block is the fallback location, not a second copy: whenever the
+  // corner is showing it, this just renders plain text instead, and
+  // whenever it's not, this is the only place the celebration appears at
+  // all - never both, never neither unless nothing at all is toggled.
+  //
+  // showSplitsTotal (Include PB/WR Under Splits?) only gates the PLAIN
+  // "PB: X"/"WR: X" lines, not the animated ones - the celebration still
+  // needs to show up SOMEWHERE whenever the corner isn't showing it,
+  // even if this block is otherwise switched off entirely, so the two
+  // are deliberately independent instead of this block being hidden
+  // outright whenever showSplitsTotal is false.
+  //
+  // Skips the rebuild entirely when nothing about the desired output has
+  // actually changed since the last call for this container (see
+  // lastSplitsTotalSignatureByEl) - this runs on every websocket message,
+  // and an unconditional rebuild would cut a still-bursting sparkle
+  // animation short on the very next one.
+  const lastSplitsTotalSignatureByEl = new Map();
+  function renderSplitsTotalCompact(container, pb, wr, showWrHolder, showSplitsTotalRank, isNewPb, isNewWr, completion, snapshot, showPb, showWrTime, showSplitsTotal) {
+    const bottomRightCelebration = showPb || showWrTime;
+    const animatePb = isNewPb && !bottomRightCelebration;
+    const animateWr = isNewWr && !bottomRightCelebration;
+    const plainPb = showSplitsTotal && !animatePb && pb && pb.time;
+    const plainWr = showSplitsTotal && !animateWr && wr && wr.time;
+    const signature = JSON.stringify([
+      animatePb, animatePb ? completion.time : plainPb ? pb.time : null,
+      animatePb || !plainPb ? null : showSplitsTotalRank && pb.rank != null ? pb.rank : null,
+      animateWr, animateWr ? completion.time : plainWr ? wr.time : null,
+      animateWr || !plainWr ? null : showWrHolder ? wr.player : null,
+    ]);
+    if (lastSplitsTotalSignatureByEl.get(container) === signature) return;
+    lastSplitsTotalSignatureByEl.set(container, signature);
     container.innerHTML = "";
-    if (pb && pb.time) {
+    if (animatePb) {
+      const line = document.createElement("div");
+      line.className = "splits-total-pb";
+      renderNewCompletionBanner(line, `New PB! ${completion.time}`, false, snapshot);
+      container.appendChild(line);
+    } else if (plainPb) {
       const line = document.createElement("div");
       line.className = "splits-total-pb";
       line.textContent = "PB: " + pb.time;
@@ -4746,13 +5056,81 @@
       }
       container.appendChild(line);
     }
-    if (wr && wr.time) {
+    if (animateWr) {
+      const line = document.createElement("div");
+      line.className = "splits-total-wr";
+      renderNewCompletionBanner(line, `New WR! ${completion.time}`, true, snapshot);
+      container.appendChild(line);
+    } else if (plainWr) {
       const line = document.createElement("div");
       line.className = "splits-total-wr";
       line.textContent = showWrHolder ? `WR: ${wr.time} by ${wr.player}` : `WR: ${wr.time}`;
       container.appendChild(line);
     }
     container.style.display = container.childElementCount ? "" : "none";
+  }
+
+  // The "New PB!"/"New WR!" pop's firework/sparkle burst (see
+  // renderNewCompletionBanner) - small glints scattered along the text at
+  // random points and angles, each flying outward and fading on its own
+  // CSS animation (.new-pb-sparkle, colored via the --glow custom
+  // property it inherits from its .new-pb[.new-wr] ancestor - see the
+  // CSS), then removing itself from the DOM once that animation ends so
+  // these never pile up across repeated PBs/WRs.
+  function spawnNewPbSparkles(container) {
+    const SPARKLE_COUNT = 10;
+    for (let i = 0; i < SPARKLE_COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 16 + Math.random() * 24;
+      const sparkle = document.createElement("span");
+      sparkle.className = "new-pb-sparkle";
+      sparkle.style.left = `${Math.random() * 100}%`;
+      sparkle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+      sparkle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+      sparkle.style.animationDelay = `${Math.random() * 120}ms`;
+      sparkle.addEventListener("animationend", () => sparkle.remove());
+      container.appendChild(sparkle);
+    }
+  }
+
+  // The current (identity-stable) completedRunSnapshot each "New PB!"/
+  // "New WR!" line has already played its pop-in/sparkle burst for -
+  // same one-shot-on-genuine-change idea as lastShownCategoryByEl, keyed
+  // by the line element itself so the corner banner and the compact
+  // splits-total block each track their own independently. See
+  // renderNewCompletionBanner.
+  const lastNewCompletionSnapshotByEl = new Map();
+
+  // Builds/updates a "New PB!"/"New WR!" styled line in place - shared by
+  // the corner's own banner (el.newPbText) and the compact PB/WR-under-
+  // splits block (see renderSplitsTotalCompact). lineEl keeps a single
+  // .new-pb-label child across renders instead of ever being fully
+  // rebuilt via textContent/innerHTML, so an in-flight sparkle burst
+  // (a sibling of that label) isn't cut short by the very next render of
+  // the same still-displayed completion. The pop-in/sparkles themselves
+  // only (re)play when this is a genuinely different completion than the
+  // last one THIS exact lineEl already played it for (see
+  // lastNewCompletionSnapshotByEl) - snapshot is completedRunSnapshot
+  // itself (stable for as long as it's the same completion - see
+  // nextCompletedRunSnapshot), not a value that happens to be equal.
+  function renderNewCompletionBanner(lineEl, text, isWr, snapshot) {
+    lineEl.classList.add("new-pb");
+    lineEl.classList.toggle("new-wr", isWr);
+    let label = lineEl.querySelector(".new-pb-label");
+    if (!label) {
+      lineEl.textContent = "";
+      label = document.createElement("span");
+      label.className = "new-pb-label";
+      lineEl.appendChild(label);
+    }
+    label.textContent = text;
+    if (lastNewCompletionSnapshotByEl.get(lineEl) !== snapshot) {
+      lineEl.classList.remove("new-pb-pop-in");
+      void lineEl.offsetWidth;
+      lineEl.classList.add("new-pb-pop-in");
+      spawnNewPbSparkles(lineEl);
+    }
+    lastNewCompletionSnapshotByEl.set(lineEl, snapshot);
   }
 
   // Paints one corner-pair (the real overlay's, or the dashboard's OBS
@@ -4768,6 +5146,13 @@
       // data, so the dashboard's OBS Live Preview can show what every
       // toggle looks like without needing the game running at all.
       category = currentCategory,
+      // What the category LINE actually displays - defaults to `category`
+      // (the normal case, where display and data are the same thing), but
+      // renderDisplay passes a literal "Death%" here while still passing
+      // the pre-death category as `category` itself (see its own
+      // lastRealCategory handling) - every PB/WR/splits lookup below stays
+      // on the real run's category, only the text on screen changes.
+      categoryText = category,
       pbsSource = pbs,
       worldRecordsSource = WORLD_RECORDS,
       wrSplitsSource = wrSplits,
@@ -4788,7 +5173,12 @@
     el.categoryLine.style.display = showCategory ? "" : "none";
 
     if (category === null) {
-      el.categoryText.textContent = "Waiting for game...";
+      // categoryText can still be truthy here (literally "Death%") if a
+      // death arrives before this session ever resolved a real category
+      // to fall back on (see renderDisplay's lastRealCategory) - shows
+      // that instead of the generic waiting message, even though there's
+      // no real data category to look anything up by.
+      el.categoryText.textContent = categoryText != null ? shortenCategoryForDisplay(categoryText) : "Waiting for game...";
       el.categoryLine.classList.add("pending");
       el.pbText.textContent = "";
       el.pbText.classList.add("unset");
@@ -4810,19 +5200,21 @@
     // right after a reconnect), whenever the category just switched TO
     // "Death%", and whenever it's switching AWAY FROM "Death%" into
     // whatever comes next - every time that happens, not just the
-    // session's first death. None of those are a change worth calling
-    // out with motion.
+    // session's first death. Compares categoryText (what's actually
+    // shown), not category (the data it's looked up by) - those two
+    // diverge on death now, and it's the displayed text whose change
+    // should (or, for Death%, shouldn't) wiggle.
     const lastCategory = lastShownCategoryByEl.get(el);
     if (
-      lastCategory != null && lastCategory !== category &&
-      category !== "Death%" && lastCategory !== "Death%"
+      lastCategory != null && lastCategory !== categoryText &&
+      categoryText !== "Death%" && lastCategory !== "Death%"
     ) {
       el.categoryText.classList.remove("category-wiggle");
       void el.categoryText.offsetWidth;
       el.categoryText.classList.add("category-wiggle");
     }
-    lastShownCategoryByEl.set(el, category);
-    el.categoryText.textContent = shortenCategoryForDisplay(category);
+    lastShownCategoryByEl.set(el, categoryText);
+    el.categoryText.textContent = shortenCategoryForDisplay(categoryText);
     const lookupCategory = resolveCategoryForData(category);
     const pb = lookupByCategory(pbsSource, lookupCategory);
     const havePb = !!(pb && pb.time);
@@ -4842,7 +5234,35 @@
     // "New PB!" + the precise achieved time, under the "PB:" line - only
     // when this completed run actually beat the stored PB (ahead is null,
     // not true, whenever there was no PB to compare against at all).
-    el.newPbText.textContent = completion && completion.ahead ? `New PB! ${completion.time}` : "";
+    // "New WR!" replaces it with the shiny gold treatment instead when
+    // that same completion also beats (or ties) the World Record - WR
+    // takes priority (isNewPb excludes it), so beating the WR never also
+    // shows "New PB!" anywhere.
+    //
+    // This banner (whichever of the two it ends up being) only shows in
+    // THIS corner when EITHER showPb or showWrTime is on - not each
+    // gated by its own matching toggle independently, a PB celebration
+    // goes bottom-right too as long as WR Time? alone is on, and vice
+    // versa. When neither is on, it shows under the splits instead if
+    // Include PB/WR Under Splits? is on (see renderSplitsTotalCompact) -
+    // never both, never neither unless nothing at all is toggled for it.
+    let isNewWr = false;
+    let isNewPb = false;
+    if (completion && completion.ahead) {
+      const wrForNewCheck = lookupByCategory(worldRecordsSource, lookupCategory);
+      const wrSecs = wrForNewCheck && wrForNewCheck.time ? parseTimeValue(wrForNewCheck.time) : null;
+      isNewWr = wrSecs != null && snapshot.time / 1000 <= wrSecs;
+      isNewPb = !isNewWr;
+    }
+    const bottomRightCelebration = showPb || showWrTime;
+    if ((isNewWr || isNewPb) && bottomRightCelebration) {
+      renderNewCompletionBanner(
+        el.newPbText, `${isNewWr ? "New WR!" : "New PB!"} ${completion.time}`, isNewWr, snapshot
+      );
+    } else {
+      el.newPbText.textContent = "";
+      el.newPbText.classList.remove("new-wr", "new-pb-pop-in");
+    }
     if (havePb) {
       if (showPb) {
         el.pbText.textContent = "PB: " + pb.time;
@@ -4951,32 +5371,43 @@
     // usual "...or live data supplied one" pattern WR uses below.
     const showPbCol = showPbSplits && havePbSplits;
     const showWrCol = showWrSplits && (!!wrScaled || !!liveSplits);
-    const rowCount = (showPbCol || showWrCol)
-      ? renderSplitRows(
-          el.splitsList, lookupCategory,
-          showPbCol, (k) => comparisonSplitCell(
-            roundStoredSplitToAccuracy(splitValue(pb, k), accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showPbDelta,
-            splitValue(pb, k), livePreciseSplits && livePreciseSplits[k]
-          ),
-          showWrCol, (k) => comparisonSplitCell(
-            roundStoredSplitToAccuracy(wrScaled && wrScaled[k], accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showWrDelta,
-            wrScaled && wrScaled[k], livePreciseSplits && livePreciseSplits[k]
-          ),
-          newlyReachedKeys, includeIl, hideZero
-        )
-      : 0;
-    if (showSplitsTotal) {
-      // Include PB/WR Under Splits? is the only gate this block needs -
-      // wr itself already reflects whatever's actually available (set
-      // whenever EITHER Show WR Splits? or WR Time? is on, see its own
-      // lookup above), same as the standalone WR Time? line in the other
-      // corner (el.wrAttribution) - WR Time? isn't exclusive to that
-      // line, it's just one of two ways wr gets populated at all.
-      renderSplitsTotalCompact(el.splitsTotalCompact, pb, wr, showWrHolder, showSplitsTotalRank);
-    } else {
-      el.splitsTotalCompact.innerHTML = "";
-      el.splitsTotalCompact.style.display = "none";
-    }
+    // Always called, even when neither column is on - renderSplitRows
+    // itself already handles that case (empty entries list, see its own
+    // first line) and, critically, still clears #splitsList either way.
+    // Calling it only when showPbCol||showWrCol was true left stale rows
+    // from a PREVIOUS category that DID have splits just sitting in the
+    // DOM forever once the category changed to one that doesn't - never
+    // cleared, since the one call that would have cleared them never
+    // ran. Previously masked by the whole block being hidden whenever
+    // rowCount was 0 (see el.splitsBlock below) - no longer true now
+    // that the PB/WR-under-splits line can keep the block visible on
+    // its own, which is what actually exposed this.
+    const rowCount = renderSplitRows(
+      el.splitsList, lookupCategory,
+      showPbCol, (k) => comparisonSplitCell(
+        roundStoredSplitToAccuracy(splitValue(pb, k), accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showPbDelta,
+        splitValue(pb, k), livePreciseSplits && livePreciseSplits[k]
+      ),
+      showWrCol, (k) => comparisonSplitCell(
+        roundStoredSplitToAccuracy(wrScaled && wrScaled[k], accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showWrDelta,
+        wrScaled && wrScaled[k], livePreciseSplits && livePreciseSplits[k]
+      ),
+      newlyReachedKeys, includeIl, hideZero
+    );
+    // Always called, even when Include PB/WR Under Splits? is off - that
+    // toggle only gates the PLAIN "PB: X"/"WR: X" lines inside
+    // renderSplitsTotalCompact now, not the animated New PB!/New WR!
+    // ones, which need to keep showing up here whenever their own
+    // bottom-right toggle is off regardless of this one (see its own
+    // comment). wr itself already reflects whatever's actually available
+    // (set whenever EITHER Show WR Splits? or WR Time? is on, see its own
+    // lookup above), same as the standalone WR Time? line in the other
+    // corner (el.wrAttribution) - WR Time? isn't exclusive to that line,
+    // it's just one of two ways wr gets populated at all.
+    renderSplitsTotalCompact(
+      el.splitsTotalCompact, pb, wr, showWrHolder, showSplitsTotalRank,
+      isNewPb, isNewWr, completion, snapshot, showPb, showWrTime, showSplitsTotal
+    );
     // Grid column count follows whichever of PB/WR are actually active,
     // so there's no empty reserved column when one is off.
     const cols = ["minmax(7.5em, max-content)"];
@@ -4993,7 +5424,14 @@
       el.wrAttribution.textContent = "";
       el.wrAttribution.style.display = "none";
     }
-    el.splitsBlock.style.display = rowCount ? "" : "none";
+    // Previously hid the whole block (PB/WR-under-splits line included)
+    // whenever there were no actual per-split comparison rows to show -
+    // but renderSplitsTotalCompact's own line is independent of that (it
+    // already manages its own display, see its final line) and the user
+    // wants it to stay visible even then, so this now only hides the
+    // block when NEITHER has anything to show.
+    const hasSplitsTotal = el.splitsTotalCompact.style.display !== "none";
+    el.splitsBlock.style.display = (rowCount || hasSplitsTotal) ? "" : "none";
   }
 
   const overlayEls = {
@@ -5008,8 +5446,19 @@
     // from effectiveCategory (not currentCategory directly) so a detected
     // Big Money run (see its own doc comment) overrides every downstream
     // lookup/display here, not just the category line itself.
-    const displayCategory = effectiveCategory(currentCategory);
+    //
+    // "Death%" is HD Toolbox's category tracker reporting that the run
+    // which just ended, ended in death - every data-driven lookup below
+    // (PB/WR splits, rank, level breakdown, completion tracking) keeps
+    // using lastRealCategory (the category this still visibly was a
+    // run of, tracked in ws.onmessage) instead of the literal string
+    // "Death%", so the splits/stats on screen stay exactly as they were
+    // the instant before death - only the category text itself (see
+    // categoryText below) changes.
+    const dataCategory = currentCategory === "Death%" ? lastRealCategory : currentCategory;
+    const displayCategory = effectiveCategory(dataCategory);
     const lookupCategory = displayCategory ? resolveCategoryForData(displayCategory) : null;
+    const categoryText = currentCategory === "Death%" ? "Death%" : displayCategory;
     const prevCompletedRunSnapshot = completedRunSnapshot;
     completedRunSnapshot = nextCompletedRunSnapshot(completedRunSnapshot, lookupCategory, currentRunState);
     // A latched snapshot can now get dropped mid-run instead of only at
@@ -5051,6 +5500,7 @@
       showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
       showSplitsTotal, showWrHolder, showSplitsTotalRank,
       category: displayCategory,
+      categoryText,
     });
     applyCategoryScale(categoryLine, window.innerWidth);
     if (showLevelBreakdown) {
@@ -5083,7 +5533,6 @@
     }
     renderPreview();
   }
-
   const previewEls = {
     categoryText: previewCategoryText,
     categoryLine: previewCategoryLine,
@@ -5811,17 +6260,52 @@
       if (msg.type === "Category" && msg.data) {
         currentCategory = msg.data.category;
         // "Death%" is HD Toolbox's category tracker reporting that the
-        // run which just ended, ended in death - the Run Tracker (Session
-        // feed) has no equivalent signal and will otherwise keep serving
-        // that dead run's run_state until the next run starts, leaving
-        // the splits panel showing stale splits under the "Death%" label.
-        // Clear it here instead of waiting for the next Session message.
-        if (currentCategory === "Death%") {
-          currentRunState = null;
-          completedRunSnapshot = null;
-          maxWormVariant = null;
-          bigMoneyDetected = false;
-        } else {
+        // run which just ended, ended in death. Deliberately left alone
+        // here - no state to touch, no run to keep tracking - so that
+        // run's stats/splits (and lastRealCategory, maxWormVariant,
+        // bigMoneyDetected - everything that drives them, see
+        // renderDisplay's own dataCategory) just stay exactly as they
+        // were at the moment of death; the category LABEL is the only
+        // thing that changes. Falling into the "else" below instead would
+        // wrongly null out maxWormVariant too, since "Death%" itself
+        // isn't a Max category.
+        if (currentCategory !== "Death%") {
+          // The pregame lobby reports a real category too - not a
+          // special "lobby" message type, just whatever base category
+          // your current HD Toolbox category-tracker settings resolve to
+          // with nothing played yet ("No Gold Pacifist Low%", "Pacifist
+          // No%", "No Gold Low%", etc., depending on which toggles are
+          // on). Confirmed live: ANY way back to the lobby - completing a
+          // run, dying, or just quitting out mid-run - reports the
+          // lobby's OWN category before the Session feed's own "fresh
+          // run" signal (see freshRun below) ever arrives. Without this
+          // check, that leaves whatever run was last being tracked (not
+          // just a completed one - lastRealCategory covers every case,
+          // completedRunSnapshot only the completed one) still on screen,
+          // mislabeled under a category it has nothing to do with.
+          //
+          // Telling that apart from the Olmec hell-skip's OWN category
+          // change mid-run (Low% -> Low% Hell, areas 0-3 still very much
+          // relevant, not orphaned - see nextCompletedRunSnapshot) can't
+          // just check "did the category change" - both do. The real
+          // difference is which way the finish line moved: hell-skip
+          // EXTENDS it (finalAreaIdx 3 -> 4, continuing the same run
+          // toward a longer one), while the lobby's own category is
+          // never a continuation of what was being run - its finish line
+          // is always at or before the tier of whatever was last tracked
+          // (same tier or shorter). Only clears on that second shape, so
+          // a reclassification mid-run is never mistaken for it.
+          if (lastRealCategory && lastRealCategory !== currentCategory) {
+            const oldFinalAreaIdx = isHellCategory(lastRealCategory) ? 4 : 3;
+            const newFinalAreaIdx = isHellCategory(currentCategory) ? 4 : 3;
+            if (newFinalAreaIdx <= oldFinalAreaIdx) {
+              currentRunState = null;
+              completedRunSnapshot = null;
+              maxWormVariant = null;
+              bigMoneyDetected = false;
+            }
+          }
+          lastRealCategory = currentCategory;
           const isMaxNow = isMaxCategory(currentCategory) && !isHellCategory(currentCategory);
           if (!isMaxNow) {
             maxWormVariant = null;
@@ -5853,12 +6337,14 @@
         // While the category tracker is reporting "Death%", it keeps
         // re-sending THIS Session feed too, still carrying the dead run's
         // old run_state on its end (it's never actually cleared there) -
-        // adopting it here would undo the Death% branch's own clear on
-        // the very next message, flickering the splits on and off. Ignore
-        // Session entirely for as long as the category stays "Death%".
-        currentRunState = currentCategory === "Death%"
-          ? null
-          : (msg.data && msg.data.data ? msg.data.data.run_state : null);
+        // left untouched instead of adopted, so currentRunState just
+        // stays frozen at whatever it was the instant before death
+        // (same data either way, but this also means a death doesn't
+        // reset it - see lastRealCategory/renderDisplay's dataCategory
+        // for the rest of what keeps showing the pre-death run's stats).
+        if (currentCategory !== "Death%") {
+          currentRunState = msg.data && msg.data.data ? msg.data.data.run_state : null;
+        }
         // A fresh attempt's run_state starts with every area null (same
         // signal nextCompletedRunSnapshot uses) - reset so a stale
         // variant from an earlier attempt in the same category streak
@@ -6060,6 +6546,7 @@
       currentRunState = null;
       maxWormVariant = null;
       bigMoneyDetected = false;
+      lastRealCategory = null;
       renderDisplay();
       setTimeout(connect, 1000);
     };

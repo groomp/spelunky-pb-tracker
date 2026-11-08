@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-07
+
+- Compact pb/wr stay visible even when no splits are present
+- Added custom PB/WR text
+- A few bug fixes, stale splits fixes
+
 ## 2026-10-12
 
 - Added LiveSplit style splitting (WIP)

@@ -31,6 +31,19 @@ import pymem
 PROCESS_NAME = "Spelunky.exe"
 POLL_INTERVAL_SECONDS = 0.05
 
+# HD Toolbox's own Seed Search tab (added in its v0.10.0) runs a hidden,
+# headless copy of the game under this process to generate levels offline
+# - confirmed via its source (spelunky-fyi/HD-Toolbox's
+# libs/mem_reader/src/process/win.rs, get_spelunky_hd_pid), which filters
+# it out the same way _find_spelunky_pid below does. Without this, running
+# a seed search at the same time as a real attempt leaves two processes
+# named Spelunky.exe running at once, and pymem's own name-based lookup
+# has no way to prefer the real one - it just attaches to whichever one
+# it happens to enumerate first, silently reading a headless worker's
+# memory instead of the actual game with no error and no indication why
+# nothing is being tracked.
+SEED_SEARCH_PROCESS_NAME = "hd-seed-search.exe"
+
 # Writable next to the actual exe when frozen (PyInstaller --onefile runs
 # from a read-only temp extraction dir, see server.py's own APP_DIR for
 # the same split), next to this file otherwise.
@@ -69,6 +82,39 @@ class VersionNotRecognized(Exception):
     """Spelunky.exe is running, but isn't a build this recognizes."""
 
 
+def _find_spelunky_pid():
+    """Picks the one real, interactive Spelunky.exe process - see
+    SEED_SEARCH_PROCESS_NAME above for why a plain name lookup isn't
+    enough on its own. Ported from the same source that constant cites:
+    one pass over every running process (matching pymem's own
+    CreateToolhelp32Snapshot-based list_processes), building a pid->name
+    map alongside collecting every Spelunky.exe's own (pid, parent pid),
+    then dropping any whose parent is hd-seed-search.exe."""
+    names_by_pid = {}
+    spelunkys = []
+    for entry in pymem.process.list_processes():
+        # Confirmed live: despite ProcessEntry32's own szExeFile property
+        # (pymem/ressources/structure.py) appearing to decode this, a
+        # ctypes.Structure's _fields_ descriptor always wins over a
+        # same-named property defined in the class body, so this is
+        # still the raw bytes from szExeFile's _fields_ entry, same as
+        # ctypes always returns a c_char array field - never the decoded
+        # str that property would suggest.
+        name = entry.szExeFile.decode(errors="ignore")
+        names_by_pid[entry.th32ProcessID] = name
+        if name.lower() == PROCESS_NAME.lower():
+            spelunkys.append((entry.th32ProcessID, entry.th32ParentProcessID))
+    spelunkys = [
+        (pid, parent_pid) for pid, parent_pid in spelunkys
+        if names_by_pid.get(parent_pid, "").lower() != SEED_SEARCH_PROCESS_NAME.lower()
+    ]
+    if not spelunkys:
+        raise GameNotFound(f"No real {PROCESS_NAME} process found.")
+    if len(spelunkys) > 1:
+        raise GameNotFound(f"Multiple real {PROCESS_NAME} processes found.")
+    return spelunkys[0][0]
+
+
 class GameState:
     __slots__ = (
         "screen_state", "level", "total_time_ms",
@@ -98,8 +144,9 @@ class SpelunkyProcess:
 
     def __init__(self):
         self.pm = pymem.Pymem()
+        pid = _find_spelunky_pid()
         try:
-            self.pm.open_process_from_name(PROCESS_NAME)
+            self.pm.open_process_from_id(pid)
         except Exception as e:
             raise GameNotFound(str(e)) from e
         try:
@@ -277,6 +324,7 @@ class RunTracker:
             "areas": [
                 {
                     "completed": a["completed"], "time_pace": a["time_pace"],
+                    "via_victory": a["via_victory"],
                     "levels": [dict(lv) if lv else None for lv in a["levels"]],
                 }
                 if a else None
@@ -286,7 +334,7 @@ class RunTracker:
 
     def _ensure_area(self, idx):
         if self.areas[idx] is None:
-            self.areas[idx] = {"completed": False, "time_pace": None, "levels": [None] * 6}
+            self.areas[idx] = {"completed": False, "time_pace": None, "via_victory": False, "levels": [None] * 6}
         return self.areas[idx]
 
     def _next_mothership_slot(self):
@@ -451,18 +499,30 @@ class RunTracker:
             self._complete_area(area, gs.total_time_ms, died=True)
         elif gs.screen_state in VICTORY_SCREENS:
             self._record_level(area, slot, gs.total_time_ms, died=False, **level_flags)
-            self._complete_area(area, gs.total_time_ms, died=False)
+            self._complete_area(area, gs.total_time_ms, died=False, via_victory=True)
 
         self._backfill_missing_areas()
         self._prev_level = level
         self._prev_total_time_ms = gs.total_time_ms
 
-    def _complete_area(self, idx, time_pace, died):
+    def _complete_area(self, idx, time_pace, died, via_victory=False):
         a = self._ensure_area(idx)
         if a["completed"] or a["time_pace"] is not None:
             return
         a["completed"] = not died
         a["time_pace"] = time_pace
+        # Distinguishes a genuine ending (VICTORY_SCREENS) from this area
+        # just being done on the way to the next one (an ordinary level
+        # transition) - confirmed live: beating Olmec and continuing on
+        # into Hell fires the exact same completed/time_pace write as a
+        # genuine Any%/Low%/No Gold ending AT Olmec, with no way to tell
+        # them apart from those two fields alone. The frontend's
+        # isRunComplete reads this to stop showing "Completed Run!" under
+        # a hell-skip-style category's PRE-reclassification name the
+        # instant Olmec's door opens, before HD Toolbox's own category
+        # tracker has caught up to the real one (Hell/Bookskip/chain/...).
+        if not died:
+            a["via_victory"] = via_victory
         if died:
             self.died = True
 
@@ -480,7 +540,7 @@ class RunTracker:
     # completed out of order.
     def _backfill_missing_areas(self):
         for idx, area in enumerate(self.areas):
-            if area is None or area["completed"]:
+            if area is None or area["completed"] or area["time_pace"] is not None:
                 continue
             # Every area expects its first 4 slots (a Worm's combined
             # level leaves the slot right after it {"skipped": True}, not
@@ -501,6 +561,12 @@ class RunTracker:
             # time_pace is already cumulative-since-run-start (see
             # _record_level) - the same value _complete_area would have
             # used had it fired at the real moment, not a reconstruction.
+            # via_victory is left at its default False (see _ensure_area) -
+            # this failsafe only exists for an EARLIER area's completion
+            # event getting missed while a later one still completed
+            # normally (see this method's own docstring), never observed
+            # to be the run's own final area, so there's no real case to
+            # infer a victory from here.
             area["completed"] = True
             area["time_pace"] = last_real["time_pace"]
 
