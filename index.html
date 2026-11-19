@@ -617,6 +617,14 @@
     color: #ff5252;
   }
 
+  /* Bottom-right Rank/Rating line, showing a live rank/rating projection
+     for a just-reached PB/WR instead of the still-stale saved one (see
+     paintCorners' own liveRankProjections) - same green as a split
+     ahead of pace. */
+  .rank-live-projection {
+    color: #3ddc57;
+  }
+
   /* One-shot "just landed" pop, applied only on the render where a split
      was first reached (see poppedSplitKeysByEl) - draws the eye to a
      result that matters without needing a permanent, distracting effect.
@@ -1399,12 +1407,24 @@
   .obs-preview-controls {
     display: flex;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 8px;
     font-size: 0.85em;
     opacity: 0.85;
     max-width: 640px;
+  }
+
+  /* Text opacity (label + slider) and "Full opacity on run complete?"
+     stay on the same line together as one unit - this can still wrap as
+     a whole onto its own line below Enable Animations? (see
+     .obs-preview-controls' own flex-wrap), it just never splits
+     internally the way plain flex-wrap siblings would. */
+  .obs-preview-controls-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 10px;
   }
 
   .obs-preview-controls input[type="range"] {
@@ -1863,6 +1883,43 @@
     font-style: italic;
   }
 
+  /* Enable Animations?/Dynamic Splits? stacked instead of side by side -
+     a shared row left the dynamic-splits-hint below ambiguous about
+     which of the two it was actually explaining. Still just one item in
+     .obs-preview-controls' own row-wrap flow, same as the Text
+     opacity/Full opacity group beside it. */
+  .obs-preview-controls-column {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .dynamic-splits-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Pulled right under the Dynamic Splits? row specifically (not the
+     column's own 4px gap stacking it under Enable Animations? too), so
+     it visibly belongs to that checkbox alone. */
+  .dynamic-splits-hint {
+    margin-top: -2px;
+  }
+
+  .new-badge {
+    background: var(--mr-orange);
+    color: #fff;
+    font-size: 0.65em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1.4;
+  }
+
   .how-to-steps {
     margin: 0;
     padding-left: 0;
@@ -2097,9 +2154,19 @@
         </div>
       </div>
       <div class="obs-preview-controls">
-        <label for="obsTextOpacityInput">Text opacity</label>
-        <input type="range" id="obsTextOpacityInput" min="0" max="100" value="100">
-        <label for="obsFlashOpacityCheck"><input type="checkbox" id="obsFlashOpacityCheck"> Full opacity on run complete?</label>
+        <div class="obs-preview-controls-column">
+          <label><input type="checkbox" id="obsLivesplitAnimationsCheck"> Enable Animations?</label>
+          <div class="dynamic-splits-row">
+            <label><input type="checkbox" id="obsDynamicSplitsCheck"> Dynamic Splits?</label>
+            <span class="new-badge">New</span>
+          </div>
+          <span class="inline-hint dynamic-splits-hint">Shows PB splits, switches to WR whenever you're ahead of WR pace (mines excluded)</span>
+        </div>
+        <div class="obs-preview-controls-group">
+          <label for="obsTextOpacityInput">Text opacity</label>
+          <input type="range" id="obsTextOpacityInput" min="0" max="100" value="100">
+          <label for="obsFlashOpacityCheck"><input type="checkbox" id="obsFlashOpacityCheck"> Full opacity on run complete?</label>
+        </div>
       </div>
     </div>
   </section>
@@ -2113,7 +2180,6 @@
       <div class="link-opts livesplit-toggles customize-body hidden">
         <label><input type="checkbox" id="obsLivesplitShowPbDeltaCheck"> Show PB Delta?</label>
         <label><input type="checkbox" id="obsLivesplitShowWrDeltaCheck"> Show WR Delta?</label>
-        <label><input type="checkbox" id="obsLivesplitAnimationsCheck"> Animations?</label>
         <label><input type="checkbox" id="obsLivesplitIncludeIlCheck" title="Olmec/Worm/Mothership/Yama/City of Gold"> Include IL Splits?</label>
         <label><input type="checkbox" id="obsLivesplitHideMinuteZeroCheck" title="e.g. 0:28 shows as 28"> Hide 0:?</label>
         <div class="livesplit-controls livesplit-controls-stacked">
@@ -2279,6 +2345,9 @@
   const showPbSplits = urlParams.get("splits") !== "0";
   const showWrSplits = urlParams.get("wrsplits") === "1";
   const showCurrentSplits = urlParams.get("currentsplits") === "1";
+  // Overrides showPbSplits/showWrSplits (see the single-column branch in
+  // renderDisplay's own splits section) - a newer opt-in, defaults off.
+  const showDynamicSplits = urlParams.get("dynamicsplits") === "1";
   // category/pb/rank/rating/date all default on, same reasoning as splits -
   // a link copied before these toggles existed should keep showing
   // everything it always did.
@@ -2500,6 +2569,31 @@
     }
   }
 
+  // Asks the server to work out where this time would currently place
+  // on the category's own real MossRanking leaderboard (see server.py's
+  // "ProjectPbRank" handler) - resolved asynchronously via the
+  // "PbRankProjected" case in ws.onmessage below, not awaited here, so
+  // a self-reported PB's rank/rating fill in a moment after the save
+  // itself rather than blocking the button on a network round trip.
+  function requestPbRankProjection(category, time) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "ProjectPbRank", data: { category, time } }));
+    }
+  }
+
+  // The most recently projected rank/rating for a LIVE completion of
+  // each category - keyed by category, {time, rank, rating} - separate
+  // from pbs itself, which only gets the real rank/rating written in
+  // once the player actually clicks "Save PB & Splits" (see that
+  // button's own handler). This fills in the moment the completion
+  // happens instead, straight on the bottom-right Rank/Rating line (see
+  // paintCorners), so it never sits showing the OLD PB's stale numbers
+  // the instant a new one is reached - requested from
+  // maybeRecordSessionPb the moment the completion is detected, matched
+  // back up by time so a stale projection for an earlier completion of
+  // the same category is never shown for a different, later one.
+  const liveRankProjections = new Map();
+
   let pbs = loadPBs();
   let currentCategory = null;
   // The in-progress run's live per-area/per-level data, from HD Toolbox's
@@ -2574,6 +2668,11 @@
   // re-render of the same category) can play a one-shot wiggle on the
   // category text - see paintCorners.
   const lastShownCategoryByEl = new Map();
+
+  // Last Dynamic Splits mode ("pb"/"wr") shown per corner-pair, so a
+  // genuine switch (not just a re-render on the same pace) can pop the
+  // column header - see paintCorners.
+  const lastDynamicModeByEl = new Map();
 
   // Per-category overrides for the WR Splits (est) estimate - included in
   // Save/Load Profile like pbs is, and (same reasoning as savePBs below)
@@ -2832,6 +2931,17 @@
     if (!m) return dateStr;
     const [, year, month, day] = m;
     return `${month}/${day}/${year}`;
+  }
+
+  // The inverse direction - a Session PB's own detectedAt (Date.now(),
+  // see maybeRecordSessionPb) into pb.date's own "YYYY-MM-DD" storage
+  // shape (formatDate above), so a self-reported PB's date is the real
+  // day it was actually run instead of whatever stale date the PB it's
+  // replacing happened to have.
+  function formatDateForStorage(timestampMs) {
+    const d = new Date(timestampMs);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   function computeHellEntry(splits) {
@@ -3329,6 +3439,7 @@
   const copyCompactLinkBtn = document.getElementById("copyCompactLinkBtn");
   const obsSplitsCheck = document.getElementById("obsSplitsCheck");
   const obsWrSplitsCheck = document.getElementById("obsWrSplitsCheck");
+  const obsDynamicSplitsCheck = document.getElementById("obsDynamicSplitsCheck");
   const obsCurrentSplitsCheck = document.getElementById("obsCurrentSplitsCheck");
   const obsLivesplitAnimationsCheck = document.getElementById("obsLivesplitAnimationsCheck");
   const obsLivesplitShowPbDeltaCheck = document.getElementById("obsLivesplitShowPbDeltaCheck");
@@ -3377,6 +3488,7 @@
   // shown to viewers.
   obsSplitsCheck.checked = linkOpts.obsSplits !== false;
   obsWrSplitsCheck.checked = !!linkOpts.obsWrSplits;
+  obsDynamicSplitsCheck.checked = !!linkOpts.obsDynamicSplits;
   obsCurrentSplitsCheck.checked = linkOpts.obsCurrentSplits !== false;
   obsCategoryCheck.checked = linkOpts.obsCategory !== false;
   obsPbCheck.checked = linkOpts.obsPb !== false;
@@ -3414,6 +3526,7 @@
     obsLinkInput.value =
       `${location.origin}/?transparent&splits=${obsSplitsCheck.checked ? 1 : 0}` +
       `&wrsplits=${obsWrSplitsCheck.checked ? 1 : 0}` +
+      `&dynamicsplits=${obsDynamicSplitsCheck.checked ? 1 : 0}` +
       `&currentsplits=${obsCurrentSplitsCheck.checked ? 1 : 0}` +
       `&category=${obsCategoryCheck.checked ? 1 : 0}` +
       `&pb=${obsPbCheck.checked ? 1 : 0}` +
@@ -3453,6 +3566,7 @@
     localStorage.setItem(LINK_OPTS_KEY, JSON.stringify({
       obsSplits: obsSplitsCheck.checked,
       obsWrSplits: obsWrSplitsCheck.checked,
+      obsDynamicSplits: obsDynamicSplitsCheck.checked,
       obsCurrentSplits: obsCurrentSplitsCheck.checked,
       obsCategory: obsCategoryCheck.checked,
       obsPb: obsPbCheck.checked,
@@ -3489,7 +3603,7 @@
   }
 
   [
-    obsSplitsCheck, obsWrSplitsCheck, obsCurrentSplitsCheck, obsCategoryCheck, obsPbCheck, obsWrTimeCheck,
+    obsSplitsCheck, obsWrSplitsCheck, obsDynamicSplitsCheck, obsCurrentSplitsCheck, obsCategoryCheck, obsPbCheck, obsWrTimeCheck,
     obsRankCheck, obsRatingCheck, obsDateCheck, obsLevelBreakdownCheck, obsLevelBreakdownCompactCheck,
     obsSplitsTotalCheck, obsWrHolderCheck, obsSplitsTotalRankCheck,
     obsPreviewExampleSelect, obsFlashOpacityCheck,
@@ -3540,6 +3654,19 @@
     window.open(compactLinkInput.value, "_blank");
   });
 
+  // Whether incoming (a time string fresh off MossRanking) is at least as
+  // fast as stored (whatever's already on record locally) - an unparsable
+  // incoming value never counts as an improvement, while an unparsable
+  // stored value means there's nothing real to protect in the first
+  // place, so anything incoming beats it by default.
+  function timeIsAtLeastAsGood(incoming, stored) {
+    const incomingSecs = parseTimeValue(incoming);
+    const storedSecs = parseTimeValue(stored);
+    if (incomingSecs == null) return false;
+    if (storedSecs == null) return true;
+    return incomingSecs <= storedSecs;
+  }
+
   function mergeMossRankingData(incoming) {
     let added = 0;
     let refreshed = 0;
@@ -3550,14 +3677,36 @@
       if (!(name in pbs)) {
         pbs[name] = { ...entry, synced: true };
         added++;
-      } else if (pbs[name].synced) {
-        // Splits are entered by hand and never come from MossRanking -
-        // keep them across a refresh instead of dropping them.
-        const splits = pbs[name].splits;
-        pbs[name] = { ...entry, synced: true, ...(splits ? { splits } : {}) };
+      } else if (pbs[name].synced || timeIsAtLeastAsGood(entry.time, pbs[name].time)) {
+        // A hand-edited (unsynced) entry only stays protected while its
+        // own time is still faster than what MossRanking now shows -
+        // once a real upload catches up to or beats it, there's nothing
+        // left worth protecting, so this refreshes it the same as any
+        // already-synced entry (confirmed live: a self-reported PB from
+        // the Session PBs popup's own Save button, unsynced until
+        // exactly this happens, was getting stuck "protected" forever
+        // instead). Splits/levelBreakdown are entered by hand (or
+        // captured by the autosplitter), not sourced from MossRanking at
+        // all, so a refresh can only ever carry the OLD ones forward,
+        // never actually update them - safe only when the time isn't
+        // actually changing (this is just confirming rank/rating/date
+        // for an already-known time). Confirmed live: a since-improved
+        // category (synced normally, no popup/hand-edit involved) kept
+        // showing an much-earlier, slower run's own splits forever,
+        // silently mismatched against the real current PB time, because
+        // nothing ever invalidated them once the recorded time moved on
+        // without a fresh set of splits to go with it.
+        const sameTime = parseTimeValue(pbs[name].time) === parseTimeValue(entry.time);
+        const { splits, levelBreakdown } = pbs[name];
+        pbs[name] = {
+          ...entry, synced: true,
+          ...(sameTime && splits ? { splits } : {}),
+          ...(sameTime && levelBreakdown ? { levelBreakdown } : {}),
+        };
         refreshed++;
       }
-      // else: user hand-edited this entry, leave it alone
+      // else: hand-edited entry whose own time still beats what's on
+      // record - leave it alone rather than overwrite with something worse.
     }
     // Drop any synced category this sync's own data no longer claims - a
     // category doesn't normally vanish from someone's real MossRanking
@@ -4496,6 +4645,11 @@
     const pb = lookupByCategory(pbs, category);
     const completion = runCompletionCell(snapshot, category, pb);
     if (!completion || !completion.ahead) return;
+    // Fires the moment a genuine new PB/WR is detected, live, well
+    // before (if ever) the player clicks "Save PB & Splits" - see
+    // liveRankProjections' own comment for why this needs to be
+    // separate from that button's own request.
+    requestPbRankProjection(category, completion.time);
     sessionPbs.push({
       category,
       time: completion.time,
@@ -4605,14 +4759,32 @@
       saveBtn.className = "copy-btn";
       saveBtn.textContent = "Save PB & Splits";
       saveBtn.addEventListener("click", () => {
+        // rank/rating are left as whatever the PB being replaced had -
+        // genuinely stale, not just unsynced, since they describe a
+        // different time entirely now. date is NOT left stale, unlike
+        // those two - the real day this was actually run is already
+        // known (detectedAt) with no MossRanking round trip needed, so
+        // there's no reason to show an old one. requestPbRankProjection
+        // below fills rank/rating back in from the category's own live
+        // leaderboard instead of waiting on a manual upload + sync.
+        // synced stays false - this hasn't actually been confirmed by
+        // MossRanking yet - but mergeMossRankingData's own time
+        // comparison is what lets a LATER real sync adopt this entry
+        // anyway (once an upload actually happens and MossRanking's own
+        // time catches up to this one) instead of treating it as a
+        // protected hand-edit forever, overwriting the projection above
+        // with MossRanking's real numbers even though they'll usually
+        // already match.
         pbs[entry.category] = {
           ...pbs[entry.category],
           time: entry.time,
+          date: formatDateForStorage(entry.detectedAt),
           splits: entry.splits,
           levelBreakdown: entry.levelBreakdown,
           synced: false,
         };
         savePBs(pbs);
+        requestPbRankProjection(entry.category, entry.time);
         const i = sessionPbs.indexOf(entry);
         if (i !== -1) sessionPbs.splice(i, 1);
         renderSessionPbBanner();
@@ -4989,6 +5161,70 @@
     return entries.length;
   }
 
+  // Dynamic Splits (see showDynamicSplits/Customize Layout) - one column
+  // instead of renderSplitRows' own two, that starts on PB pace and
+  // switches to WR pace the instant a cumulative checkpoint's own live
+  // time catches up to or beats WR's own cumulative split there,
+  // switching back the instant one doesn't. getLiveVsWr(key) is asked
+  // after EVERY cumulative key (never an IL one - Olmec/Worm/Mothership/
+  // Yama/City of Gold, see IL_SPLIT_KEYS, have no single "pace" a
+  // mid-route fight's own duration could establish) and returns "wr"/
+  // "pb" to switch to, or null to leave the current mode alone (not
+  // reached yet, or no WR data to compare against at all) - starts on
+  // "pb" since there's nothing yet to judge pace from at the first
+  // split. Mirrors renderSplitRows' own per-row shape (name cell, one
+  // time cell, pop animation, wr-time styling) closely enough to share
+  // its exact look, just without a second column or a cross-delta (both
+  // only make sense when PB and WR are showing side by side). Returns
+  // the final mode alongside the row count - the one that applies to
+  // every row from the last cumulative split onward, i.e. the pace
+  // whoever's watching is CURRENTLY on - so the caller can reflect it
+  // on the column header (see paintCorners' own PB/WR header text).
+  function renderDynamicSplitRows(
+    listEl, category, getPbValue, getWrValue, getLiveVsWr, newlyReachedKeys, includeIl, hideZero
+  ) {
+    let entries = splitKeysFor(category);
+    if (!includeIl) entries = entries.filter((key) => !IL_SPLIT_KEYS.has(key));
+    listEl.innerHTML = "";
+    let mode = "pb";
+    for (const key of entries) {
+      // Resolved BEFORE building this row's own cell, not after - the
+      // split that actually catches up to (or falls behind) WR pace is
+      // the same one that should show it, per Dynamic Splits' own
+      // spec ("if you finish a split faster than WR, it switches to
+      // WR") - confirmed live: applying the new mode starting only on
+      // the NEXT split instead left the split that just fell back
+      // behind WR still showing (and computing its own delta against)
+      // the old WR reference for one extra row.
+      if (!IL_SPLIT_KEYS.has(key)) {
+        const nextMode = getLiveVsWr(key);
+        if (nextMode != null) mode = nextMode;
+      }
+      const row = document.createElement("div");
+      row.className = "split-row";
+      const popElapsedMs = newlyReachedKeys ? newlyReachedKeys.get(key) : undefined;
+      const cell = mode === "wr" ? getWrValue(key) : getPbValue(key);
+      const nameDelta = buildSplitDeltaSpan(cell);
+      const name = document.createElement("span");
+      name.className = "split-name";
+      const nameText = document.createElement("span");
+      nameText.textContent = splitLabel(key, !!nameDelta);
+      name.appendChild(nameText);
+      if (nameDelta) name.appendChild(nameDelta);
+      row.appendChild(name);
+      // No wr-time class here (unlike renderSplitRows' own two-column
+      // WR cell) - that class's opacity dimming was meant to de-
+      // emphasize a secondary WR column next to the "main" PB one, but
+      // Dynamic Splits has only one column, so it just made whichever
+      // splits happened to be on WR pace look darker than the ones on
+      // PB pace for no real reason - the header text already says which
+      // pace is active.
+      row.appendChild(buildSplitTimeCell(cell, null, popElapsedMs, false, hideZero));
+      listEl.appendChild(row);
+    }
+    return { count: entries.length, mode };
+  }
+
   // Opt-in (see showSplitsTotal/obsSplitsTotalCheck) - a compact "PB: X
   // (Rank N)" / "WR: X [by Player]" pair placed right under the splits
   // grid, same wording as the standalone PB/WR Time/Rank lines over in
@@ -5139,7 +5375,7 @@
   // a second hand-maintained copy that can drift out of sync with it.
   function paintCorners(el, opts) {
     const {
-      showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
+      showPbSplits, showWrSplits, showDynamicSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
       showSplitsTotal, showWrHolder, showSplitsTotalRank,
       // Defaults are the real live state (for the actual overlay, via
       // renderDisplay below) - renderPreview instead passes fixed sample
@@ -5206,7 +5442,7 @@
     // should (or, for Death%, shouldn't) wiggle.
     const lastCategory = lastShownCategoryByEl.get(el);
     if (
-      lastCategory != null && lastCategory !== categoryText &&
+      animations && lastCategory != null && lastCategory !== categoryText &&
       categoryText !== "Death%" && lastCategory !== "Death%"
     ) {
       el.categoryText.classList.remove("category-wiggle");
@@ -5272,12 +5508,26 @@
         el.pbText.textContent = "";
         el.pbText.style.display = "none";
       }
+      // A genuine new PB/WR this run (isNewPb/isNewWr, same gate the
+      // "New PB!"/"New WR!" banner above already uses) shows the live
+      // projection instead of pb's own still-stale rank/rating, the
+      // instant it's actually in (see liveRankProjections) - matched by
+      // time so a projection for an EARLIER completion of this same
+      // category is never mistaken for this one's. Green the same way a
+      // split ahead of pace is, since this is exactly that: a real
+      // improvement, just not yet confirmed by an actual MossRanking
+      // sync.
+      const liveProjection = (isNewPb || isNewWr) ? liveRankProjections.get(lookupCategory) : null;
+      const usingLiveProjection = !!(liveProjection && completion && liveProjection.time === completion.time);
+      const displayRank = usingLiveProjection ? liveProjection.rank : pb.rank;
+      const displayRating = usingLiveProjection ? liveProjection.rating : pb.rating;
       const parts = [];
-      if (showRank && pb.rank != null) parts.push("Rank " + pb.rank);
-      if (showRating && pb.rating != null) parts.push(pb.rating);
+      if (showRank && displayRank != null) parts.push("Rank " + displayRank);
+      if (showRating && displayRating != null) parts.push(displayRating);
       if (parts.length) {
         el.rankText.textContent = parts.join(" - ");
         el.rankText.style.display = "";
+        el.rankText.classList.toggle("rank-live-projection", usingLiveProjection);
       } else {
         el.rankText.style.display = "none";
       }
@@ -5291,6 +5541,7 @@
       el.pbText.textContent = "";
       el.pbText.classList.add("unset");
       el.rankText.style.display = "none";
+      el.rankText.classList.remove("rank-live-projection");
       el.dateText.style.display = "none";
     }
 
@@ -5304,10 +5555,10 @@
     // overridden split breakdown) is only ever needed for the first.
     let wr = null;
     let wrScaled = null;
-    if (showWrSplits || showWrTime || showSplitsTotal) {
+    if (showWrSplits || showWrTime || showSplitsTotal || showDynamicSplits) {
       wr = lookupByCategory(worldRecordsSource, lookupCategory);
     }
-    if (showWrSplits) {
+    if (showWrSplits || showDynamicSplits) {
       const wrEstimated = wr
         ? computeTargetSplits(lookupCategory, wr.time, {
             assumeWrOlmec: true, wrOverrides: lookupByCategory(wrSplitsSource, lookupCategory),
@@ -5369,8 +5620,39 @@
     // there, and (see liveSplits above) can't pick up live data either in
     // that case, so this simplifies to just havePbSplits rather than the
     // usual "...or live data supplied one" pattern WR uses below.
-    const showPbCol = showPbSplits && havePbSplits;
-    const showWrCol = showWrSplits && (!!wrScaled || !!liveSplits);
+    // Dynamic Splits overrides both (see showDynamicSplits/Customize
+    // Layout) - same havePbSplits precondition as the PB column, since
+    // it starts on PB pace and needs live data to ever judge WR pace at
+    // all (see liveSplits/livePreciseSplits's own gating just above).
+    const showPbCol = !showDynamicSplits && showPbSplits && havePbSplits;
+    const showWrCol = !showDynamicSplits && showWrSplits && (!!wrScaled || !!liveSplits);
+    const showDynamicCol = showDynamicSplits && havePbSplits;
+    const getPbCell = (k) => comparisonSplitCell(
+      roundStoredSplitToAccuracy(splitValue(pb, k), accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showPbDelta,
+      splitValue(pb, k), livePreciseSplits && livePreciseSplits[k]
+    );
+    const getWrCell = (k) => comparisonSplitCell(
+      roundStoredSplitToAccuracy(wrScaled && wrScaled[k], accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showWrDelta,
+      wrScaled && wrScaled[k], livePreciseSplits && livePreciseSplits[k]
+    );
+    // Dynamic Splits overrides Show PB Delta?/Show WR Delta? too - one
+    // column, so there's no separate "PB's own delta" vs "WR's own
+    // delta" to independently gate the way the two-column path does.
+    // Whichever one is actually displayed just follows whichever
+    // reference is currently active (see renderDynamicSplitRows' own
+    // mode), and shows at all as long as EITHER toggle is on, not only
+    // the one matching the current mode - a row showing WR pace while
+    // only Show PB Delta? is checked still gets a delta, same as it
+    // would if that same split happened to land on PB pace instead.
+    const showDynamicDelta = showPbDelta || showWrDelta;
+    const getPbCellDynamic = (k) => comparisonSplitCell(
+      roundStoredSplitToAccuracy(splitValue(pb, k), accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showDynamicDelta,
+      splitValue(pb, k), livePreciseSplits && livePreciseSplits[k]
+    );
+    const getWrCellDynamic = (k) => comparisonSplitCell(
+      roundStoredSplitToAccuracy(wrScaled && wrScaled[k], accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showDynamicDelta,
+      wrScaled && wrScaled[k], livePreciseSplits && livePreciseSplits[k]
+    );
     // Always called, even when neither column is on - renderSplitRows
     // itself already handles that case (empty entries list, see its own
     // first line) and, critically, still clears #splitsList either way.
@@ -5382,18 +5664,34 @@
     // rowCount was 0 (see el.splitsBlock below) - no longer true now
     // that the PB/WR-under-splits line can keep the block visible on
     // its own, which is what actually exposed this.
-    const rowCount = renderSplitRows(
-      el.splitsList, lookupCategory,
-      showPbCol, (k) => comparisonSplitCell(
-        roundStoredSplitToAccuracy(splitValue(pb, k), accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showPbDelta,
-        splitValue(pb, k), livePreciseSplits && livePreciseSplits[k]
-      ),
-      showWrCol, (k) => comparisonSplitCell(
-        roundStoredSplitToAccuracy(wrScaled && wrScaled[k], accuracy, k), liveSplits && liveSplits[k], deltaAccuracy, showWrDelta,
-        wrScaled && wrScaled[k], livePreciseSplits && livePreciseSplits[k]
-      ),
-      newlyReachedKeys, includeIl, hideZero
-    );
+    const { rowCount, dynamicMode } = showDynamicCol
+      ? (() => {
+          const result = renderDynamicSplitRows(
+            el.splitsList, lookupCategory, getPbCellDynamic, getWrCellDynamic,
+            (k) => {
+              // Post-Mines minimum (see "Dynamic Splits?" note) - Mines
+              // itself never triggers a switch, too early/luck-dependent
+              // a sample to judge pace off of. Still renders under
+              // whatever mode is already active, same as an IL split -
+              // Jungle onward is what can actually move the needle.
+              if (k === "Mines") return null;
+              if (!livePreciseSplits || livePreciseSplits[k] == null) return null;
+              if (!wrScaled || wrScaled[k] == null) return null;
+              const liveSecs = parseTimeValue(livePreciseSplits[k]);
+              const wrSecs = parseTimeValue(wrScaled[k]);
+              if (liveSecs == null || wrSecs == null) return null;
+              return liveSecs <= wrSecs ? "wr" : "pb";
+            },
+            newlyReachedKeys, includeIl, hideZero
+          );
+          return { rowCount: result.count, dynamicMode: result.mode };
+        })()
+      : { rowCount: renderSplitRows(
+          el.splitsList, lookupCategory,
+          showPbCol, getPbCell,
+          showWrCol, getWrCell,
+          newlyReachedKeys, includeIl, hideZero
+        ), dynamicMode: null };
     // Always called, even when Include PB/WR Under Splits? is off - that
     // toggle only gates the PLAIN "PB: X"/"WR: X" lines inside
     // renderSplitsTotalCompact now, not the animated New PB!/New WR!
@@ -5408,13 +5706,35 @@
       el.splitsTotalCompact, pb, wr, showWrHolder, showSplitsTotalRank,
       isNewPb, isNewWr, completion, snapshot, showPb, showWrTime, showSplitsTotal
     );
-    // Grid column count follows whichever of PB/WR are actually active,
-    // so there's no empty reserved column when one is off.
+    // Grid column count follows whichever of PB/WR/Dynamic are actually
+    // active, so there's no empty reserved column when one is off.
+    // Dynamic reuses the PB column's own slot/header rather than adding
+    // a third - the two are mutually exclusive (showPbCol is already
+    // forced false whenever showDynamicCol can be true).
     const cols = ["minmax(7.5em, max-content)"];
-    if (showPbCol) cols.push("minmax(3.4em, max-content)");
+    if (showPbCol || showDynamicCol) cols.push("minmax(3.4em, max-content)");
     if (showWrCol) cols.push("minmax(3.4em, max-content)");
     el.splitsGrid.style.gridTemplateColumns = cols.join(" ");
-    el.pbColLabel.style.display = showPbCol ? "" : "none";
+    el.pbColLabel.style.display = (showPbCol || showDynamicCol) ? "" : "none";
+    // Dynamic Splits' own header names whichever pace is actually
+    // showing right now (see renderDynamicSplitRows' own returned mode)
+    // instead of a generic label - and pops the same way a newly-reached
+    // split does (see @keyframes split-pop) on a genuine switch, so the
+    // mode change itself is as noticeable as the column that just
+    // started showing different numbers underneath it. Gated on
+    // Enable Animations? (animations) and skipped on the very first
+    // render of a given mode (lastDynamicMode == null) - same gate and
+    // "a change, not an appearance" rule paintCorners' own category-
+    // wiggle already follows.
+    const newPbColLabel = showDynamicCol ? (dynamicMode === "wr" ? "WR" : "PB") : "PB";
+    const lastDynamicMode = lastDynamicModeByEl.get(el);
+    if (animations && showDynamicCol && lastDynamicMode != null && lastDynamicMode !== dynamicMode) {
+      el.pbColLabel.classList.remove("split-pop");
+      void el.pbColLabel.offsetWidth;
+      el.pbColLabel.classList.add("split-pop");
+    }
+    lastDynamicModeByEl.set(el, showDynamicCol ? dynamicMode : null);
+    el.pbColLabel.textContent = newPbColLabel;
     el.wrColLabel.style.display = showWrCol ? "" : "none";
     el.splitsHeaderRow.style.display = rowCount ? "" : "none";
     if (showWrTime && wr) {
@@ -5497,7 +5817,7 @@
       });
     }
     paintCorners(overlayEls, {
-      showPbSplits, showWrSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
+      showPbSplits, showWrSplits, showDynamicSplits, showCurrentSplits, showCategory, showPb, showWrTime, showRank, showRating, showDate,
       showSplitsTotal, showWrHolder, showSplitsTotalRank,
       category: displayCategory,
       categoryText,
@@ -5706,6 +6026,7 @@
     paintCorners(previewEls, {
       showPbSplits: obsSplitsCheck.checked,
       showWrSplits: obsWrSplitsCheck.checked,
+      showDynamicSplits: obsDynamicSplitsCheck.checked,
       showCurrentSplits: obsCurrentSplitsCheck.checked,
       showCategory: obsCategoryCheck.checked,
       showPb: obsPbCheck.checked,
@@ -6425,6 +6746,32 @@
           syncStatus.textContent = "Sync failed: " + (msg.error || "unknown error");
         }
         if (pending) pending.resolve();
+        return;
+      } else if (msg.type === "PbRankProjected") {
+        if (msg.ok) {
+          // Independent of the pbs[category] save-path below - this is
+          // what lets the live bottom-right Rank/Rating line (see
+          // paintCorners) show the real new number the instant a
+          // completion is detected (see maybeRecordSessionPb), whether
+          // or not the player has clicked "Save PB & Splits" for it at
+          // all yet.
+          liveRankProjections.set(msg.category, { time: msg.time, rank: msg.rank, rating: msg.rating });
+        }
+        // Only merges into the SAVED pb entry when it's still exactly
+        // the one this was asked about (same category, same unsynced
+        // time, still not confirmed by a real sync) - by the time this
+        // round trip comes back, that PB may have already been
+        // overwritten again, picked up by a real MossRanking sync, or
+        // hand-edited, and this must never clobber any of those with a
+        // now-stale projection.
+        const pb = pbs[msg.category];
+        if (msg.ok && pb && pb.synced === false && pb.time === msg.time) {
+          pb.rank = msg.rank;
+          pb.rating = msg.rating;
+          savePBs(pbs);
+          renderPBGlance();
+        }
+        renderDisplay();
         return;
       } else if (msg.type === "WorldRecordsRefreshed") {
         refreshWorldRecordsBtn.disabled = false;

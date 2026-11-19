@@ -56,6 +56,11 @@ RANK_RE = re.compile(r"^\d+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 PROFILE_ID_RE = re.compile(r"id_user=(\d+)")
 TITLE_RE = re.compile(r"<title>\s*Profile:\s*(.*?)\s*</title>", re.S)
+# A category's own name cell links to its full leaderboard (e.g. Low% ->
+# /spelunky-hd/cat/low, "No Gold Low%" -> /spelunky-hd/cat/ng-low) - no
+# guessable relationship to the display name, so the slug has to come from
+# this link rather than being derived.
+CATEGORY_SLUG_RE = re.compile(r"/spelunky-hd/cat/([^/?#\"]+)")
 
 
 class ProfileNotFound(Exception):
@@ -118,6 +123,23 @@ def _video_url_from_hrefs(hrefs):
         if href.startswith("http") and "mossranking.com" not in href:
             return href
     return None
+
+
+def _category_slug_from_hrefs(hrefs):
+    """The category's own leaderboard link, if this row has one - see
+    CATEGORY_SLUG_RE above."""
+    for href in hrefs:
+        m = CATEGORY_SLUG_RE.search(href)
+        if m:
+            return m.group(1)
+    return None
+
+
+def parse_time_to_seconds(time_str):
+    """M:SS(.mmm) (TIME_RE's own format, the only one every timed row
+    on the site ever uses) as a float number of seconds."""
+    minutes, seconds = time_str.split(":", 1)
+    return int(minutes) * 60 + float(seconds)
 
 
 def _search_players(query):
@@ -252,6 +274,11 @@ def scrape_world_records():
     text). Header and <hr>-separator rows have fewer cells and are
     skipped naturally; score-only rows (Main Score) are skipped because
     their "time" cell doesn't match TIME_RE.
+
+    "slug" (the category's own /spelunky-hd/cat/<slug> leaderboard page,
+    see CATEGORY_SLUG_RE) rides along here too - scraped for free from
+    the same row's own hrefs, no extra requests - so it's always on hand
+    wherever WR data already is, for scrape_category_leaderboard below.
     """
     groups = {}
     for cid, group_name in CATS_GROUPS.items():
@@ -268,6 +295,33 @@ def scrape_world_records():
             category, player, time_val = row[0], row[1], row[2]
             if not category or not TIME_RE.match(time_val):
                 continue
-            entries[category] = {"time": time_val, "player": player, "video": _video_url_from_hrefs(hrefs)}
+            entries[category] = {
+                "time": time_val, "player": player, "video": _video_url_from_hrefs(hrefs),
+                "slug": _category_slug_from_hrefs(hrefs),
+            }
         groups[group_name] = entries
     return groups
+
+
+def scrape_category_leaderboard(slug):
+    """Every timed entry on one category's own full leaderboard
+    (mossranking.com/spelunky-hd/cat/<slug>), as a list of times in
+    seconds - used to work out where a not-yet-uploaded PB would
+    currently place (see server.py's "ProjectPbRank" handler), without
+    waiting on a manual upload+sync. Row shape is [rank, player, time,
+    rating, spelunker (no text), platform (no text), video (no text)] -
+    same empty-cell pattern as scrape_world_records' own rows, just with
+    an extra leading rank column scrape_profile's own rows already use
+    the same way."""
+    html = _fetch(f"https://mossranking.com/spelunky-hd/cat/{slug}")
+    parsed = _parse_rows(html)
+    times = []
+    for row in parsed.rows:
+        cells = [c for c in row if c]
+        if len(cells) < 3:
+            continue
+        rank, _player, time_val = cells[0], cells[1], cells[2]
+        if not RANK_RE.match(rank) or not TIME_RE.match(time_val):
+            continue
+        times.append(parse_time_to_seconds(time_val))
+    return times

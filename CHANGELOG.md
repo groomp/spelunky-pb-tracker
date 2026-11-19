@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 - v1.5.1
+
+- Enable Animations? now correctly includes the category wiggle
+- New Dynamic Splits option - shows PB splits unless on WR pace
+- Various bug fixes/polish
+
 ## 2026-11-07
 
 - Compact pb/wr stay visible even when no splits are present

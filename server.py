@@ -68,7 +68,7 @@ WS_PATH = "/ws"
 # Bumped on every tagged GitHub release - the single source of truth both
 # for what's shown next to the dashboard's own title and for what
 # "CheckForUpdate" compares against the latest release tag.
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 GITHUB_REPO = "groomp/spelunky-pb-tracker"
 GITHUB_LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 GITHUB_USER_AGENT = "PBTracker-UpdateCheck"
@@ -201,19 +201,25 @@ def read_wr_splits_override():
         return {}
 
 
+def flatten_world_records(groups):
+    """Every category across every group, in one dict - category names
+    are unique across groups, so this is lossless. Shared by
+    diff_world_records below and the "ProjectPbRank" handler, which only
+    needs to look a single category's own WR entry (time + slug) up by
+    name, not iterate group-by-group itself."""
+    flat = {}
+    for entries in groups.values():
+        flat.update(entries)
+    return flat
+
+
 def diff_world_records(old_groups, new_groups):
     """Flattens both (category names are unique across groups) and reports
     every category that's new or whose WR time/player changed since the
     last scrape - what the "Refresh World Records" button's status line
     summarizes."""
-    def flatten(groups):
-        flat = {}
-        for entries in groups.values():
-            flat.update(entries)
-        return flat
-
-    old_flat = flatten(old_groups)
-    new_flat = flatten(new_groups)
+    old_flat = flatten_world_records(old_groups)
+    new_flat = flatten_world_records(new_groups)
     changes = []
     for category, entry in new_flat.items():
         old_entry = old_flat.get(category)
@@ -474,6 +480,49 @@ async def handle_client_message(websocket, message):
             print(f"  -> refresh failed: {e}")
             await websocket.send(json.dumps({
                 "type": "WorldRecordsRefreshed", "ok": False, "error": str(e),
+            }))
+
+    elif msg_type == "ProjectPbRank":
+        # Where a PB just saved through the Session PBs popup would
+        # currently place, computed directly from the category's own
+        # full leaderboard instead of waiting on a manual MossRanking
+        # upload + SyncMossRanking round trip (which the player has to
+        # do by hand, outside this app, so it's never immediate). Rating
+        # is just time-vs-WR, same formula the site itself uses (see
+        # scrape_category_leaderboard's own docstring for the live
+        # verification this matched MossRanking's own displayed rank
+        # exactly); rank is 1 + however many entries beat the new time.
+        data = msg.get("data", {})
+        category = data.get("category")
+        time_str = data.get("time")
+        print(f"Projecting rank/rating for {category!r} at {time_str!r}...")
+        try:
+            wr_entry = flatten_world_records(read_world_records_groups()).get(category)
+            slug = wr_entry.get("slug") if wr_entry else None
+            if not slug:
+                raise ValueError(f"No MossRanking leaderboard known for {category!r}.")
+            times = await asyncio.to_thread(mossranking.scrape_category_leaderboard, slug)
+            new_seconds = mossranking.parse_time_to_seconds(time_str)
+            wr_seconds = mossranking.parse_time_to_seconds(wr_entry["time"])
+            rank = 1 + sum(1 for t in times if t < new_seconds)
+            # Capped at 100% - the formula is "how you compare to the
+            # WR", which only makes sense while the WR is still someone
+            # ELSE's time to compare against. A new_seconds that beats
+            # wr_seconds (a new world record) would otherwise push this
+            # over 100%, which isn't a real rating MossRanking itself
+            # would ever show - 100% (rank 1, by the same beaten-WR
+            # logic) is the correct ceiling.
+            rating_pct = min(100.0, (wr_seconds / new_seconds) * 100)
+            rating = f"{rating_pct:.2f}%"
+            print(f"  -> rank {rank}, rating {rating}")
+            await websocket.send(json.dumps({
+                "type": "PbRankProjected", "ok": True, "category": category,
+                "time": time_str, "rank": rank, "rating": rating,
+            }))
+        except Exception as e:
+            print(f"  -> projection failed: {e}")
+            await websocket.send(json.dumps({
+                "type": "PbRankProjected", "ok": False, "category": category, "error": str(e),
             }))
 
     elif msg_type == "CheckForUpdate":

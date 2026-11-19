@@ -3,92 +3,110 @@
     "Any%": {
       "time": "1:32.596",
       "player": "Kinnijup",
-      "video": "https://youtu.be/VpZQgACeE8o"
+      "video": "https://youtu.be/VpZQgACeE8o",
+      "slug": "any"
     },
     "Low%": {
       "time": "2:16.935",
       "player": "Hectique",
-      "video": "https://youtu.be/1Vpz9iolsRc"
+      "video": "https://youtu.be/1Vpz9iolsRc",
+      "slug": "low"
     },
     "Chain Hell%": {
       "time": "3:19.970",
       "player": "Kinnijup",
-      "video": "https://youtu.be/_JesniANb3M"
+      "video": "https://youtu.be/_JesniANb3M",
+      "slug": "chain-hell"
     },
     "No Gold": {
       "time": "1:44.569",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=hd4lSJQQIFE"
+      "video": "https://www.youtube.com/watch?v=hd4lSJQQIFE",
+      "slug": "ng"
     },
     "No Gold Low%": {
       "time": "2:32.651",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=y9nYTA1RekI"
+      "video": "https://www.youtube.com/watch?v=y9nYTA1RekI",
+      "slug": "ng-low"
     },
     "No Gold Chain Hell%": {
       "time": "3:32.780",
       "player": "Hectique",
-      "video": "https://youtu.be/bsJq0sgSZXw"
+      "video": "https://youtu.be/bsJq0sgSZXw",
+      "slug": "ng-chain-hell"
     },
     "No Teleporter No Gold Any%": {
       "time": "2:02.366",
       "player": "TBPengy",
-      "video": "https://youtu.be/7y7O1X5FgAE"
+      "video": "https://youtu.be/7y7O1X5FgAE",
+      "slug": "notp-ng-any"
     },
     "Max Any%": {
       "time": "1:54.668",
       "player": "TBPengy",
-      "video": "https://youtu.be/ARKKIx7wYAE"
+      "video": "https://youtu.be/ARKKIx7wYAE",
+      "slug": "max-any"
     },
     "Max Low%": {
       "time": "3:11.023",
       "player": "TBPengy",
-      "video": "https://youtu.be/P0ANcy5yw44"
+      "video": "https://youtu.be/P0ANcy5yw44",
+      "slug": "max-low"
     },
     "Max Chain Hell%": {
       "time": "3:48.149",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=ZjlixBpXdPc"
+      "video": "https://www.youtube.com/watch?v=ZjlixBpXdPc",
+      "slug": "max-chain-hell"
     },
     "No Teleporter Any%": {
       "time": "2:02.366",
       "player": "TBPengy",
-      "video": "https://youtu.be/7y7O1X5FgAE"
+      "video": "https://youtu.be/7y7O1X5FgAE",
+      "slug": "notp-any"
     },
     "No Teleporter Max Any%": {
       "time": "2:43.301",
       "player": "TBPengy",
-      "video": "https://youtu.be/TjcZLDn1QeQ"
+      "video": "https://youtu.be/TjcZLDn1QeQ",
+      "slug": "notp-max-any"
     },
     "No Teleporter Chain Hell%": {
       "time": "3:32.780",
       "player": "Hectique",
-      "video": "https://youtu.be/bsJq0sgSZXw"
+      "video": "https://youtu.be/bsJq0sgSZXw",
+      "slug": "notp-chain-hell"
     },
     "No Teleporter Max Chain Hell%": {
       "time": "3:58.640",
       "player": "Hectique",
-      "video": "https://youtu.be/bUtMNN-IAvc"
+      "video": "https://youtu.be/bUtMNN-IAvc",
+      "slug": "notp-max-chain-hell"
     },
     "Big Money": {
       "time": "5:16.897",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=jOZ9NoYhMn4"
+      "video": "https://www.youtube.com/watch?v=jOZ9NoYhMn4",
+      "slug": "big-money"
     },
     "Chain Eggplant%": {
       "time": "6:07.806",
       "player": "Kinnijup",
-      "video": "https://www.youtube.com/watch?v=m8e-EZO-EyI"
+      "video": "https://www.youtube.com/watch?v=m8e-EZO-EyI",
+      "slug": "chain-eggplant"
     },
     "Chain Low% Hell": {
       "time": "4:39.752",
       "player": "TBPengy",
-      "video": "https://youtu.be/XX5ptngeNPE"
+      "video": "https://youtu.be/XX5ptngeNPE",
+      "slug": "chain-low-hell"
     },
     "All Shortcuts + Olmec (Loadless)": {
       "time": "14:16.360",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=zQlfFi3H0Vo"
+      "video": "https://www.youtube.com/watch?v=zQlfFi3H0Vo",
+      "slug": "aso-ll"
     }
   },
   "Main Score": {},
@@ -96,918 +114,1100 @@
     "Hell%": {
       "time": "3:19.970",
       "player": "Kinnijup",
-      "video": "https://youtu.be/_JesniANb3M"
+      "video": "https://youtu.be/_JesniANb3M",
+      "slug": "hell"
     },
     "Eggplant%": {
       "time": "5:11.360",
       "player": "Hectique",
-      "video": "https://youtu.be/NIKF5y4708A"
+      "video": "https://youtu.be/NIKF5y4708A",
+      "slug": "eggplant"
     },
     "Haunted Max Any%": {
       "time": "2:20.720",
       "player": "Hectique",
-      "video": "https://youtu.be/xSBtzAdFv8w"
+      "video": "https://youtu.be/xSBtzAdFv8w",
+      "slug": "hmax-any"
     },
     "No Gold Max Any%": {
       "time": "2:08.831",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=6LPhvM6RR5E"
+      "video": "https://www.youtube.com/watch?v=6LPhvM6RR5E",
+      "slug": "ng-max-any"
     },
     "No Gold Haunted Max Any%": {
       "time": "2:25.382",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=9UPXW6yEDRY"
+      "video": "https://www.youtube.com/watch?v=9UPXW6yEDRY",
+      "slug": "ng-hmax-any"
     },
     "No TP Haunted Max Any%": {
       "time": "3:03.681",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2174659372"
+      "video": "https://www.twitch.tv/videos/2174659372",
+      "slug": "notp-hmax-any"
     },
     "No TP No Gold Max Any%": {
       "time": "3:01.446",
       "player": "Kinnijup",
-      "video": "https://youtu.be/ODN05LFn1x8"
+      "video": "https://youtu.be/ODN05LFn1x8",
+      "slug": "notp-ng-max-any"
     },
     "No TP No Gold Haunted Max Any%": {
       "time": "3:13.283",
       "player": "TBPengy",
-      "video": "https://youtu.be/VX2vUYpuT2A"
+      "video": "https://youtu.be/VX2vUYpuT2A",
+      "slug": "notp-ng-hmax-any"
     },
     "Haunted Max Low%": {
       "time": "3:49.299",
       "player": "Kinnijup",
-      "video": "https://youtu.be/cOX3Hp6p7r0"
+      "video": "https://youtu.be/cOX3Hp6p7r0",
+      "slug": "hmax-low"
     },
     "No Gold Max Low%": {
       "time": "3:33.502",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=3W7U9BzSXHs"
+      "video": "https://www.youtube.com/watch?v=3W7U9BzSXHs",
+      "slug": "ng-max-low"
     },
     "No Gold Haunted Max Low%": {
       "time": "4:31.467",
       "player": "Carlibraun",
-      "video": "https://youtu.be/TVIrJ6V9YLU"
+      "video": "https://youtu.be/TVIrJ6V9YLU",
+      "slug": "ng-hmax-low"
     },
     "Haunted Max Chain Hell%": {
       "time": "4:28.719",
       "player": "Spef",
-      "video": "https://youtu.be/5xYMGBqX3zo"
+      "video": "https://youtu.be/5xYMGBqX3zo",
+      "slug": "hmax-chain-hell"
     },
     "No Gold Max Chain Hell%": {
       "time": "4:58.179",
       "player": "Kinnijup",
-      "video": "https://youtu.be/lx7OE4AJfkg"
+      "video": "https://youtu.be/lx7OE4AJfkg",
+      "slug": "ng-max-chain-hell"
     },
     "No Gold Haunted Max Chain Hell%": {
       "time": "5:47.655",
       "player": "BlueCadet-3",
-      "video": "https://youtu.be/t9JmoepPOx4"
+      "video": "https://youtu.be/t9JmoepPOx4",
+      "slug": "ng-hmax-chain-hell"
     },
     "No TP Haunted Max Chain Hell%": {
       "time": "4:43.082",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=6FFPCMCwu5Q"
+      "video": "https://www.youtube.com/watch?v=6FFPCMCwu5Q",
+      "slug": "notp-hmax-chain-hell"
     },
     "No TP No Gold Chain Hell%": {
       "time": "3:32.780",
       "player": "Hectique",
-      "video": "https://youtu.be/bsJq0sgSZXw"
+      "video": "https://youtu.be/bsJq0sgSZXw",
+      "slug": "notp-ng-chain-hell"
     },
     "No TP No Gold Max Chain Hell%": {
       "time": "5:14.734",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=OVzmaxuE0Jw"
+      "video": "https://www.youtube.com/watch?v=OVzmaxuE0Jw",
+      "slug": "notp-ng-max-chain-hell"
     },
     "No TP No Gold Haunted Max Chain Hell%": {
       "time": "6:28.391",
       "player": "Hectique",
-      "video": "https://youtu.be/sRcMQz7z-Es"
+      "video": "https://youtu.be/sRcMQz7z-Es",
+      "slug": "notp-ng-hmax-chain-hell"
     },
     "Max Chain Low% Hell": {
       "time": "6:30.316",
       "player": "Kinnijup",
-      "video": "https://www.youtube.com/watch?v=OjfEzE5XUqo"
+      "video": "https://www.youtube.com/watch?v=OjfEzE5XUqo",
+      "slug": "max-chain-low-hell"
     },
     "Haunted Max Chain Low% Hell": {
       "time": "7:36.078",
       "player": "Kinnijup",
-      "video": "https://youtu.be/tzP0ih7NcxU"
+      "video": "https://youtu.be/tzP0ih7NcxU",
+      "slug": "hmax-chain-low-hell"
     },
     "No Gold Chain Low% Hell": {
       "time": "5:51.549",
       "player": "d_tea",
-      "video": "https://youtu.be/O_v8j9oqetw"
+      "video": "https://youtu.be/O_v8j9oqetw",
+      "slug": "ng-chain-low-hell"
     },
     "No Gold Max Chain Low% Hell": {
       "time": "8:21.266",
       "player": "Kinnijup",
-      "video": "https://youtu.be/mkeIMBTgi6Y"
+      "video": "https://youtu.be/mkeIMBTgi6Y",
+      "slug": "ng-max-chain-low-hell"
     },
     "No Gold Haunted Max Chain Low% Hell": {
       "time": "9:51.355",
       "player": "Hectique",
-      "video": "https://youtu.be/BwEkKS3DhDw"
+      "video": "https://youtu.be/BwEkKS3DhDw",
+      "slug": "ng-hmax-chain-low-hell"
     },
     "Max Chain Eggplant%": {
       "time": "8:07.850",
       "player": "d_tea",
-      "video": "https://youtu.be/WgzloYRTa34"
+      "video": "https://youtu.be/WgzloYRTa34",
+      "slug": "max-chain-eggplant"
     },
     "Haunted Max Chain Eggplant%": {
       "time": "17:58.599",
       "player": "Spef",
-      "video": "https://youtu.be/KgnwILJoVXo"
+      "video": "https://youtu.be/KgnwILJoVXo",
+      "slug": "hmax-chain-eggplant"
     },
     "No Gold Chain Eggplant%": {
       "time": "9:15.071",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2881393300"
+      "video": "https://www.twitch.tv/videos/2881393300",
+      "slug": "ng-chain-eggplant"
     },
     "No Gold Max Chain Eggplant%": {
       "time": "9:15.071",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2881393300"
+      "video": "https://www.twitch.tv/videos/2881393300",
+      "slug": "ng-max-chain-eggplant"
     },
     "No Gold Haunted Max Chain Eggplant%": {
       "time": "22:09.561",
       "player": "Kinnijup",
-      "video": "https://youtu.be/Ou4OwFm1xeQ"
+      "video": "https://youtu.be/Ou4OwFm1xeQ",
+      "slug": "ng-hmax-chain-eggplant"
     },
     "Chain Low% Eggplant": {
       "time": "16:48.008",
       "player": "Spef",
-      "video": "https://youtu.be/np6CBuVRBp0"
+      "video": "https://youtu.be/np6CBuVRBp0",
+      "slug": "chain-low-eggplant"
     },
     "Max Chain Low% Eggplant": {
       "time": "16:48.008",
       "player": "Spef",
-      "video": "https://youtu.be/np6CBuVRBp0"
+      "video": "https://youtu.be/np6CBuVRBp0",
+      "slug": "max-chain-low-eggplant"
     },
     "Chain Shield Run": {
       "time": "5:35.303",
       "player": "Hectique",
-      "video": "https://www.youtube.com/watch?v=BlaJP5QDFX8"
+      "video": "https://www.youtube.com/watch?v=BlaJP5QDFX8",
+      "slug": "chain-shield"
     },
     "Max Chain Shield Run": {
       "time": "8:51.780",
       "player": "SoulAro",
-      "video": "https://youtu.be/I7ju2cvZthU"
+      "video": "https://youtu.be/I7ju2cvZthU",
+      "slug": "max-chain-shield"
     },
     "No Gold Chain Shield Run": {
       "time": "15:58.353",
       "player": "jjg27",
-      "video": "https://www.youtube.com/watch?v=GqT8iipBIi0"
+      "video": "https://www.youtube.com/watch?v=GqT8iipBIi0",
+      "slug": "ng-chain-shield"
     },
     "No Gold Max Chain Shield Run": {
       "time": "15:58.353",
       "player": "jjg27",
-      "video": "https://www.youtube.com/watch?v=GqT8iipBIi0"
+      "video": "https://www.youtube.com/watch?v=GqT8iipBIi0",
+      "slug": "ng-max-chain-shield"
     },
     "No%": {
       "time": "3:21.604",
       "player": "jjg27",
-      "video": "https://youtu.be/ADO2e1cW6p8"
+      "video": "https://youtu.be/ADO2e1cW6p8",
+      "slug": "no"
     },
     "Max No%": {
       "time": "6:25.150",
       "player": "Hectique",
-      "video": "https://youtu.be/vjHO3tChl84"
+      "video": "https://youtu.be/vjHO3tChl84",
+      "slug": "max-no"
     },
     "Jumbo Money": {
       "time": "12:13.551",
       "player": "Hectique",
-      "video": "https://youtu.be/wwxU4tUvkno"
+      "video": "https://youtu.be/wwxU4tUvkno",
+      "slug": "jumbo-money"
     },
     "Low% Big Money": {
       "time": "16:36.585",
       "player": "d_tea",
-      "video": "https://youtu.be/3m22Gjx1_mw"
+      "video": "https://youtu.be/3m22Gjx1_mw",
+      "slug": "low-big-money"
     },
     "All Shortcuts + Olmec (RTA)": {
       "time": "14:40.310",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=zQlfFi3H0Vo"
+      "video": "https://www.youtube.com/watch?v=zQlfFi3H0Vo",
+      "slug": "aso"
     },
     "All Journal Entries (Loadless)": {
       "time": "24:18.910",
       "player": "Hectique",
-      "video": "https://youtu.be/48_5aQhyhM0"
+      "video": "https://youtu.be/48_5aQhyhM0",
+      "slug": "aje-ll"
     },
     "All Journal Entries (RTA)": {
       "time": "24:43.850",
       "player": "Hectique",
-      "video": "https://youtu.be/48_5aQhyhM0"
+      "video": "https://youtu.be/48_5aQhyhM0",
+      "slug": "aje"
     },
     "All Characters (Loadless)": {
       "time": "44:41.910",
       "player": "Hectique",
-      "video": "https://www.youtube.com/watch?v=HDV7Cy28IDE"
+      "video": "https://www.youtube.com/watch?v=HDV7Cy28IDE",
+      "slug": "ac-ll"
     },
     "All Characters (RTA)": {
       "time": "45:54.920",
       "player": "Hectique",
-      "video": "https://www.youtube.com/watch?v=HDV7Cy28IDE"
+      "video": "https://www.youtube.com/watch?v=HDV7Cy28IDE",
+      "slug": "ac"
     },
     "Tutorial% (Loadless)": {
       "time": "1:09.960",
       "player": "TBPengy",
-      "video": "https://youtu.be/76CaBD_wjzk"
+      "video": "https://youtu.be/76CaBD_wjzk",
+      "slug": "tutorial-ll"
     },
     "Tutorial% (RTA)": {
       "time": "1:11.740",
       "player": "TBPengy",
-      "video": "https://youtu.be/76CaBD_wjzk"
+      "video": "https://youtu.be/76CaBD_wjzk",
+      "slug": "tutorial"
     },
     "Temple Shortcut Low%": {
       "time": "0:39.100",
       "player": "Hectique",
-      "video": "https://youtu.be/2wknv48imZo"
+      "video": "https://youtu.be/2wknv48imZo",
+      "slug": "ts-low"
     },
     "Ice Caves Shortcut Max Low%": {
       "time": "2:07.980",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=Bgtp02d3xqg"
+      "video": "https://www.youtube.com/watch?v=Bgtp02d3xqg",
+      "slug": "ics-max-low"
     }
   },
   "Pacifist": {
     "Pacifist Any%": {
-      "time": "2:09.025",
-      "player": "d_tea",
-      "video": "https://youtu.be/YrZMkBxlf0U"
+      "time": "2:07.533",
+      "player": "WGPL",
+      "video": "https://www.youtube.com/watch?v=c3aYGVoJUjQ",
+      "slug": "paci-any"
     },
     "Max Pacifist Any%": {
       "time": "2:30.820",
       "player": "Hectique",
-      "video": "https://youtu.be/sLU97ildIhs"
+      "video": "https://youtu.be/sLU97ildIhs",
+      "slug": "max-paci-any"
     },
     "Haunted Max Pacifist Any%": {
       "time": "3:45.463",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=XUCUVTo74k0"
+      "video": "https://www.youtube.com/watch?v=XUCUVTo74k0",
+      "slug": "hmax-paci-any"
     },
     "No Gold Pacifist Any%": {
-      "time": "2:20.218",
-      "player": "Hectique",
-      "video": "https://youtu.be/6UjzabuE14U"
+      "time": "2:07.533",
+      "player": "WGPL",
+      "video": "https://www.youtube.com/watch?v=c3aYGVoJUjQ",
+      "slug": "ng-paci-any"
     },
     "No Gold Max Pacifist Any%": {
-      "time": "3:22.787",
-      "player": "d_tea",
-      "video": "https://youtu.be/wE_z5I0KHX0"
+      "time": "2:45.997",
+      "player": "WGPL",
+      "video": "https://www.youtube.com/watch?v=Au40BsPPBoU",
+      "slug": "ng-max-paci-any"
     },
     "No Gold Haunted Max Pacifist Any%": {
       "time": "3:45.463",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=XUCUVTo74k0"
+      "video": "https://www.youtube.com/watch?v=XUCUVTo74k0",
+      "slug": "ng-hmax-paci-any"
     },
     "No TP Pacifist Any%": {
       "time": "2:25.717",
       "player": "SoulAro",
-      "video": "https://youtu.be/uXL3GnvXz2o"
+      "video": "https://youtu.be/uXL3GnvXz2o",
+      "slug": "notp-paci-any"
     },
     "No TP Max Pacifist Any%": {
       "time": "3:42.731",
       "player": "SoulAro",
-      "video": "https://youtu.be/CI1WxyACgLI"
+      "video": "https://youtu.be/CI1WxyACgLI",
+      "slug": "notp-max-paci-any"
     },
     "No TP Haunted Max Pacifist Any%": {
       "time": "3:45.463",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=XUCUVTo74k0"
+      "video": "https://www.youtube.com/watch?v=XUCUVTo74k0",
+      "slug": "notp-hmax-paci-any"
     },
     "No TP No Gold Pacifist Any%": {
       "time": "2:26.937",
       "player": "TBPengy",
-      "video": "https://www.youtube.com/watch?v=2CbaecQWNgQ"
+      "video": "https://www.youtube.com/watch?v=2CbaecQWNgQ",
+      "slug": "notp-ng-paci-any"
     },
     "No TP No Gold Max Pacifist Any%": {
       "time": "3:42.731",
       "player": "SoulAro",
-      "video": "https://youtu.be/CI1WxyACgLI"
+      "video": "https://youtu.be/CI1WxyACgLI",
+      "slug": "notp-ng-max-paci-any"
     },
     "No TP No Gold Haunted Max Pacifist Any%": {
       "time": "3:45.463",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=XUCUVTo74k0"
+      "video": "https://www.youtube.com/watch?v=XUCUVTo74k0",
+      "slug": "notp-ng-hmax-paci-any"
     },
     "Pacifist Low%": {
       "time": "2:48.067",
       "player": "Hectique",
-      "video": "https://youtu.be/j8mdV9_zpSk"
+      "video": "https://youtu.be/j8mdV9_zpSk",
+      "slug": "paci-low"
     },
     "Max Pacifist Low%": {
       "time": "5:00.283",
       "player": "TBPengy",
-      "video": "https://youtu.be/wkZdHCRn9WY"
+      "video": "https://youtu.be/wkZdHCRn9WY",
+      "slug": "max-paci-low"
     },
     "Haunted Max Pacifist Low%": {
       "time": "7:04.199",
       "player": "TBPengy",
-      "video": "https://youtu.be/XrylnFG5-6c"
+      "video": "https://youtu.be/XrylnFG5-6c",
+      "slug": "hmax-paci-low"
     },
     "No Gold Pacifist Low%": {
       "time": "3:13.189",
       "player": "TBPengy",
-      "video": "https://youtu.be/9dH5dtqoAx0"
+      "video": "https://youtu.be/9dH5dtqoAx0",
+      "slug": "ng-paci-low"
     },
     "No Gold Max Pacifist Low%": {
       "time": "5:20.617",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2171359703"
+      "video": "https://www.twitch.tv/videos/2171359703",
+      "slug": "ng-max-paci-low"
     },
     "No Gold Haunted Max Pacifist Low%": {
       "time": "7:21.508",
       "player": "Hectique",
-      "video": "https://youtu.be/pR5eBRTIVJA"
+      "video": "https://youtu.be/pR5eBRTIVJA",
+      "slug": "ng-hmax-paci-low"
     },
     "Pacifist No%": {
       "time": "5:52.832",
       "player": "SoulAro",
-      "video": "https://youtu.be/ZuKZDebEdX8"
+      "video": "https://youtu.be/ZuKZDebEdX8",
+      "slug": "paci-no"
     },
     "Max Pacifist No%": {
       "time": "16:11.206",
       "player": "Hectique",
-      "video": "https://youtu.be/Z1qeer818uo"
+      "video": "https://youtu.be/Z1qeer818uo",
+      "slug": "max-paci-no"
     },
     "Pacifist Chain Hell%": {
       "time": "5:26.175",
       "player": "Hectique",
-      "video": "https://youtu.be/l5w0subk0Gk"
+      "video": "https://youtu.be/l5w0subk0Gk",
+      "slug": "paci-chain-hell"
     },
     "Max Pacifist Chain Hell%": {
       "time": "7:56.475",
       "player": "Hectique",
-      "video": "https://youtu.be/YnIJxmGFYlw"
+      "video": "https://youtu.be/YnIJxmGFYlw",
+      "slug": "max-paci-chain-hell"
     },
     "Haunted Max Pacifist Chain Hell%": {
       "time": "8:19.860",
       "player": "Hectique",
-      "video": "https://www.youtube.com/watch?v=xk06gwG-3mU"
+      "video": "https://www.youtube.com/watch?v=xk06gwG-3mU",
+      "slug": "hmax-paci-chain-hell"
     },
     "No Gold Pacifist Chain Hell%": {
       "time": "5:26.175",
       "player": "Hectique",
-      "video": "https://youtu.be/l5w0subk0Gk"
+      "video": "https://youtu.be/l5w0subk0Gk",
+      "slug": "ng-paci-chain-hell"
     },
     "No Gold Max Pacifist Chain Hell%": {
       "time": "7:56.475",
       "player": "Hectique",
-      "video": "https://youtu.be/YnIJxmGFYlw"
+      "video": "https://youtu.be/YnIJxmGFYlw",
+      "slug": "ng-max-paci-chain-hell"
     },
     "No Gold Haunted Max Pacifist Chain Hell%": {
       "time": "11:17.751",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2874335548"
+      "video": "https://www.twitch.tv/videos/2874335548",
+      "slug": "ng-hmax-paci-chain-hell"
     },
     "No TP Pacifist Chain Hell%": {
       "time": "5:26.175",
       "player": "Hectique",
-      "video": "https://youtu.be/l5w0subk0Gk"
+      "video": "https://youtu.be/l5w0subk0Gk",
+      "slug": "notp-paci-chain-hell"
     },
     "No TP Max Pacifist Chain Hell%": {
       "time": "8:17.064",
       "player": "SoulAro",
-      "video": "https://youtu.be/0TmC8Uzyt3k"
+      "video": "https://youtu.be/0TmC8Uzyt3k",
+      "slug": "notp-max-paci-chain-hell"
     },
     "No TP Haunted Max Pacifist Chain Hell%": {
       "time": "11:17.751",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2874335548"
+      "video": "https://www.twitch.tv/videos/2874335548",
+      "slug": "notp-hmax-paci-chain-hell"
     },
     "No TP No Gold Pacifist Chain Hell%": {
       "time": "5:26.175",
       "player": "Hectique",
-      "video": "https://youtu.be/l5w0subk0Gk"
+      "video": "https://youtu.be/l5w0subk0Gk",
+      "slug": "notp-ng-paci-chain-hell"
     },
     "No TP No Gold Max Pacifist Chain Hell%": {
       "time": "8:17.064",
       "player": "SoulAro",
-      "video": "https://youtu.be/0TmC8Uzyt3k"
+      "video": "https://youtu.be/0TmC8Uzyt3k",
+      "slug": "notp-ng-max-paci-chain-hell"
     },
     "No TP No Gold Haunted Max Pacifist Chain Hell%": {
       "time": "11:17.751",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2874335548"
+      "video": "https://www.twitch.tv/videos/2874335548",
+      "slug": "notp-ng-hmax-paci-chain-hell"
     },
     "Pacifist Chain Low% Hell": {
       "time": "13:03.161",
       "player": "Hectique",
-      "video": "https://youtu.be/I9jv8WmV5Fw"
+      "video": "https://youtu.be/I9jv8WmV5Fw",
+      "slug": "paci-chain-low-hell"
     },
     "Max Pacifist Chain Low% Hell": {
       "time": "21:42.550",
       "player": "Hectique",
-      "video": "https://youtu.be/r3FkLOv5iEg"
+      "video": "https://youtu.be/r3FkLOv5iEg",
+      "slug": "max-paci-chain-low-hell"
     },
     "No Gold Pacifist Chain Low% Hell": {
       "time": "20:37.172",
       "player": "SoulAro",
-      "video": "https://youtu.be/fN65dbBBcS0"
+      "video": "https://youtu.be/fN65dbBBcS0",
+      "slug": "ng-paci-chain-low-hell"
     },
     "Pacifist Chain Eggplant%": {
       "time": "9:40.759",
       "player": "Hectique",
-      "video": "https://youtu.be/ZbfV2-Femgg"
+      "video": "https://youtu.be/ZbfV2-Femgg",
+      "slug": "paci-chain-eggplant"
     },
     "Max Pacifist Chain Eggplant%": {
       "time": "16:21.266",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2876844246"
+      "video": "https://www.twitch.tv/videos/2876844246",
+      "slug": "max-paci-chain-eggplant"
     },
     "No Gold Pacifist Chain Eggplant%": {
       "time": "16:21.266",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2876844246"
+      "video": "https://www.twitch.tv/videos/2876844246",
+      "slug": "ng-paci-chain-eggplant"
     },
     "No Gold Max Pacifist Chain Eggplant%": {
       "time": "16:21.266",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2876844246"
+      "video": "https://www.twitch.tv/videos/2876844246",
+      "slug": "ng-max-paci-chain-eggplant"
     },
     "Pacifist Chain Shield Run": {
       "time": "18:06.472",
       "player": "Hectique",
-      "video": "https://youtu.be/6W1cOAq-S4k"
+      "video": "https://youtu.be/6W1cOAq-S4k",
+      "slug": "paci-chain-shield"
     },
     "Pacifist Bookskip Hell%": {
       "time": "5:09.062",
       "player": "SoulAro",
-      "video": "https://youtu.be/VSFQeDqiCTA"
+      "video": "https://youtu.be/VSFQeDqiCTA",
+      "slug": "paci-bookskip-hell"
     },
     "Max Pacifist Bookskip Hell%": {
       "time": "6:56.786",
       "player": "SoulAro",
-      "video": "https://youtu.be/K4ycMrCLAXc"
+      "video": "https://youtu.be/K4ycMrCLAXc",
+      "slug": "max-paci-bookskip-hell"
     },
     "Haunted Max Pacifist Bookskip Hell%": {
       "time": "21:18.950",
       "player": "TBPengy",
-      "video": "https://youtu.be/HuN87PozQ9E"
+      "video": "https://youtu.be/HuN87PozQ9E",
+      "slug": "hmax-paci-bookskip-hell"
     },
     "No Gold Pacifist Bookskip Hell%": {
       "time": "8:49.640",
       "player": "SoulAro",
-      "video": "https://youtu.be/Tg6AYphVgA0"
+      "video": "https://youtu.be/Tg6AYphVgA0",
+      "slug": "ng-paci-bookskip-hell"
     },
     "No Gold Max Pacifist Bookskip Hell%": {
       "time": "10:07.988",
       "player": "SoulAro",
-      "video": "https://youtu.be/RGotk-F009Q"
+      "video": "https://youtu.be/RGotk-F009Q",
+      "slug": "ng-max-paci-bookskip-hell"
     },
     "No Gold Haunted Max Pacifist Bookskip Hell%": {
       "time": "21:18.950",
       "player": "TBPengy",
-      "video": "https://youtu.be/HuN87PozQ9E"
+      "video": "https://youtu.be/HuN87PozQ9E",
+      "slug": "ng-hmax-paci-bookskip-hell"
     },
     "No TP Pacifist Bookskip Hell%": {
       "time": "5:09.062",
       "player": "SoulAro",
-      "video": "https://youtu.be/VSFQeDqiCTA"
+      "video": "https://youtu.be/VSFQeDqiCTA",
+      "slug": "notp-paci-bookskip-hell"
     },
     "No TP Max Pacifist Bookskip Hell%": {
       "time": "8:50.972",
       "player": "SoulAro",
-      "video": "https://youtu.be/cst-ChrcZtk"
+      "video": "https://youtu.be/cst-ChrcZtk",
+      "slug": "notp-max-paci-bookskip-hell"
     },
     "No TP Haunted Max Pacifist Bookskip Hell%": {
       "time": "21:18.950",
       "player": "TBPengy",
-      "video": "https://youtu.be/HuN87PozQ9E"
+      "video": "https://youtu.be/HuN87PozQ9E",
+      "slug": "notp-hmax-paci-bookskip-hell"
     },
     "No TP No Gold Pacifist Bookskip Hell%": {
       "time": "8:49.640",
       "player": "SoulAro",
-      "video": "https://youtu.be/Tg6AYphVgA0"
+      "video": "https://youtu.be/Tg6AYphVgA0",
+      "slug": "notp-ng-paci-bookskip-hell"
     },
     "No TP No Gold Max Pacifist Bookskip Hell%": {
       "time": "10:07.988",
       "player": "SoulAro",
-      "video": "https://youtu.be/RGotk-F009Q"
+      "video": "https://youtu.be/RGotk-F009Q",
+      "slug": "notp-ng-max-paci-bookskip-hell"
     },
     "No TP No Gold Haunted Max Pacifist Bookskip Hell%": {
       "time": "21:18.950",
       "player": "TBPengy",
-      "video": "https://youtu.be/HuN87PozQ9E"
+      "video": "https://youtu.be/HuN87PozQ9E",
+      "slug": "notp-ng-hmax-paci-bookskip-hell"
     },
     "Pacifist Low% Hell": {
       "time": "15:30.691",
       "player": "SoulAro",
-      "video": "https://youtu.be/n5y1dWvbvWI"
+      "video": "https://youtu.be/n5y1dWvbvWI",
+      "slug": "paci-low-hell"
     },
     "Max Pacifist Low% Hell": {
       "time": "17:04.436",
       "player": "SoulAro",
-      "video": "https://youtu.be/gvK6Xt6C5ZY"
+      "video": "https://youtu.be/gvK6Xt6C5ZY",
+      "slug": "max-paci-low-hell"
     },
     "Haunted Max Pacifist Low% Hell": {
       "time": "41:20.378",
       "player": "Hectique",
-      "video": "https://youtu.be/cdb9SsFUQdo"
+      "video": "https://youtu.be/cdb9SsFUQdo",
+      "slug": "hmax-paci-low-hell"
     },
     "No Gold Pacifist Low% Hell": {
       "time": "21:08.436",
       "player": "Hectique",
-      "video": "https://youtu.be/9KCyz7OBGmc"
+      "video": "https://youtu.be/9KCyz7OBGmc",
+      "slug": "ng-paci-low-hell"
     },
     "No Gold Max Pacifist Low% Hell": {
       "time": "24:19.429",
       "player": "SoulAro",
-      "video": "https://youtu.be/wCFk78yn5F4"
+      "video": "https://youtu.be/wCFk78yn5F4",
+      "slug": "ng-max-paci-low-hell"
     },
     "No Gold Haunted Max Pacifist Low% Hell": {
       "time": "41:20.378",
       "player": "Hectique",
-      "video": "https://youtu.be/cdb9SsFUQdo"
+      "video": "https://youtu.be/cdb9SsFUQdo",
+      "slug": "ng-hmax-paci-low-hell"
     },
     "Pacifist Bookskip Eggplant%": {
       "time": "10:39.829",
       "player": "Hectique",
-      "video": "https://youtu.be/vvquMXfXFxA"
+      "video": "https://youtu.be/vvquMXfXFxA",
+      "slug": "paci-bookskip-eggplant"
     },
     "Max Pacifist Bookskip Eggplant%": {
       "time": "10:39.829",
       "player": "Hectique",
-      "video": "https://youtu.be/vvquMXfXFxA"
+      "video": "https://youtu.be/vvquMXfXFxA",
+      "slug": "max-paci-bookskip-eggplant"
     },
     "No Gold Pacifist Bookskip Eggplant%": {
       "time": "12:13.147",
       "player": "SoulAro",
-      "video": "https://youtu.be/fAmA1BI0H-Y"
+      "video": "https://youtu.be/fAmA1BI0H-Y",
+      "slug": "ng-paci-bookskip-eggplant"
     },
     "Pacifist Low% Eggplant": {
       "time": "17:23.871",
       "player": "Hectique",
-      "video": "https://youtu.be/V80TRdJXIpA"
+      "video": "https://youtu.be/V80TRdJXIpA",
+      "slug": "paci-low-eggplant"
     },
     "No Gold Pacifist Low% Eggplant": {
       "time": "26:15.305",
       "player": "Hectique",
-      "video": "https://youtu.be/COz9I_aL20k"
+      "video": "https://youtu.be/COz9I_aL20k",
+      "slug": "ng-paci-low-eggplant"
     },
     "Pacifist Bookskip Shield Run": {
       "time": "22:11.684",
       "player": "SoulAro",
-      "video": "https://youtu.be/X_oRIfWuRn4"
+      "video": "https://youtu.be/X_oRIfWuRn4",
+      "slug": "paci-bookskip-shield"
     },
     "Max Pacifist Bookskip Shield Run": {
       "time": "23:13.562",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2172247246"
+      "video": "https://www.twitch.tv/videos/2172247246",
+      "slug": "max-paci-bookskip-shield"
     },
     "No Gold Pacifist Bookskip Shield Run": {
       "time": "22:11.684",
       "player": "SoulAro",
-      "video": "https://youtu.be/X_oRIfWuRn4"
+      "video": "https://youtu.be/X_oRIfWuRn4",
+      "slug": "ng-paci-bookskip-shield"
     },
     "No Gold Max Pacifist Bookskip Shield Run": {
       "time": "23:13.562",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2172247246"
+      "video": "https://www.twitch.tv/videos/2172247246",
+      "slug": "ng-max-paci-bookskip-shield"
     },
     "Pacifist Low% Shield Run": {
       "time": "22:11.684",
       "player": "SoulAro",
-      "video": "https://youtu.be/X_oRIfWuRn4"
+      "video": "https://youtu.be/X_oRIfWuRn4",
+      "slug": "paci-low-shield"
     },
     "No Gold Pacifist Low% Shield Run": {
       "time": "22:11.684",
       "player": "SoulAro",
-      "video": "https://youtu.be/X_oRIfWuRn4"
+      "video": "https://youtu.be/X_oRIfWuRn4",
+      "slug": "ng-paci-low-shield"
     },
     "Pacifist No% Hell": {
       "time": "25:23.484",
       "player": "Hectique",
-      "video": "https://youtu.be/EBKjhG58vHo"
+      "video": "https://youtu.be/EBKjhG58vHo",
+      "slug": "paci-no-hell"
     }
   },
   "Bookskip": {
     "Bookskip Hell%": {
       "time": "3:33.896",
       "player": "Hectique",
-      "video": "https://youtu.be/oDDZ32N5ung"
+      "video": "https://youtu.be/oDDZ32N5ung",
+      "slug": "bookskip-hell"
     },
     "Max Bookskip Hell%": {
       "time": "4:02.779",
       "player": "SoulAro",
-      "video": "https://youtu.be/gzHoUMLL0ro"
+      "video": "https://youtu.be/gzHoUMLL0ro",
+      "slug": "max-bookskip-hell"
     },
     "Haunted Max Bookskip Hell%": {
       "time": "4:02.779",
       "player": "SoulAro",
-      "video": "https://youtu.be/gzHoUMLL0ro"
+      "video": "https://youtu.be/gzHoUMLL0ro",
+      "slug": "hmax-bookskip-hell"
     },
     "No Gold Bookskip Hell%": {
       "time": "5:11.814",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2105267008"
+      "video": "https://www.twitch.tv/videos/2105267008",
+      "slug": "ng-bookskip-hell"
     },
     "No Gold Max Bookskip Hell%": {
       "time": "5:11.814",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2105267008"
+      "video": "https://www.twitch.tv/videos/2105267008",
+      "slug": "ng-max-bookskip-hell"
     },
     "No Gold Haunted Max Bookskip Hell%": {
       "time": "7:22.796",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=0v6SnboqtNQ"
+      "video": "https://www.youtube.com/watch?v=0v6SnboqtNQ",
+      "slug": "ng-hmax-bookskip-hell"
     },
     "No TP Bookskip Hell%": {
       "time": "3:56.499",
       "player": "Hectique",
-      "video": "https://youtu.be/FObfFuelYGs"
+      "video": "https://youtu.be/FObfFuelYGs",
+      "slug": "notp-bookskip-hell"
     },
     "No TP Max Bookskip Hell%": {
       "time": "4:44.369",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2243459805"
+      "video": "https://www.twitch.tv/videos/2243459805",
+      "slug": "notp-max-bookskip-hell"
     },
     "No TP Haunted Max Bookskip Hell%": {
       "time": "5:16.840",
       "player": "Spef",
-      "video": "https://youtu.be/1Ho75Kgf25Q"
+      "video": "https://youtu.be/1Ho75Kgf25Q",
+      "slug": "notp-hmax-bookskip-hell"
     },
     "No TP No Gold Bookskip Hell%": {
       "time": "5:11.814",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2105267008"
+      "video": "https://www.twitch.tv/videos/2105267008",
+      "slug": "notp-ng-bookskip-hell"
     },
     "No TP No Gold Max Bookskip Hell%": {
       "time": "5:11.814",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2105267008"
+      "video": "https://www.twitch.tv/videos/2105267008",
+      "slug": "notp-ng-max-bookskip-hell"
     },
     "No TP No Gold Haunted Max Bookskip Hell%": {
       "time": "7:22.796",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=0v6SnboqtNQ"
+      "video": "https://www.youtube.com/watch?v=0v6SnboqtNQ",
+      "slug": "notp-ng-hmax-bookskip-hell"
     },
     "Low% Hell": {
       "time": "4:32.584",
       "player": "TBPengy",
-      "video": "https://youtu.be/hR-PijWKOrc"
+      "video": "https://youtu.be/hR-PijWKOrc",
+      "slug": "low-hell"
     },
     "Max Low% Hell": {
       "time": "8:45.111",
       "player": "SoulAro",
-      "video": "https://youtu.be/Jd2sMo_AnR0"
+      "video": "https://youtu.be/Jd2sMo_AnR0",
+      "slug": "max-low-hell"
     },
     "Haunted Max Low% Hell": {
       "time": "12:05.620",
       "player": "d_tea",
-      "video": "https://youtu.be/n3F2SzspLio"
+      "video": "https://youtu.be/n3F2SzspLio",
+      "slug": "hmax-low-hell"
     },
     "No Gold Low% Hell": {
       "time": "5:40.816",
       "player": "Spef",
-      "video": "https://youtu.be/Ss9y9NzEVoE"
+      "video": "https://youtu.be/Ss9y9NzEVoE",
+      "slug": "ng-low-hell"
     },
     "No Gold Max Low% Hell": {
       "time": "8:45.111",
       "player": "SoulAro",
-      "video": "https://youtu.be/Jd2sMo_AnR0"
+      "video": "https://youtu.be/Jd2sMo_AnR0",
+      "slug": "ng-max-low-hell"
     },
     "No Gold Haunted Max Low% Hell": {
       "time": "17:04.397",
       "player": "TBPengy",
-      "video": "https://youtu.be/Zxwdf8qdnf0"
+      "video": "https://youtu.be/Zxwdf8qdnf0",
+      "slug": "ng-hmax-low-hell"
     },
     "Bookskip Eggplant%": {
       "time": "5:11.360",
       "player": "Hectique",
-      "video": "https://youtu.be/NIKF5y4708A"
+      "video": "https://youtu.be/NIKF5y4708A",
+      "slug": "bookskip-eggplant"
     },
     "Max Bookskip Eggplant%": {
       "time": "11:22.882",
       "player": "jjg27",
-      "video": "https://www.youtube.com/watch?v=TtTvuh2z7W8"
+      "video": "https://www.youtube.com/watch?v=TtTvuh2z7W8",
+      "slug": "max-bookskip-eggplant"
     },
     "Haunted Max Bookskip Eggplant%": {
       "time": "17:44.153",
       "player": "Hectique",
-      "video": "https://youtu.be/WaNgPCAdLYE"
+      "video": "https://youtu.be/WaNgPCAdLYE",
+      "slug": "hmax-bookskip-eggplant"
     },
     "No Gold Bookskip Eggplant%": {
       "time": "7:29.917",
       "player": "TBPengy",
-      "video": "https://youtu.be/9p1iT-ROw24"
+      "video": "https://youtu.be/9p1iT-ROw24",
+      "slug": "ng-bookskip-eggplant"
     },
     "No Gold Max Bookskip Eggplant%": {
       "time": "17:44.153",
       "player": "Hectique",
-      "video": "https://youtu.be/WaNgPCAdLYE"
+      "video": "https://youtu.be/WaNgPCAdLYE",
+      "slug": "ng-max-bookskip-eggplant"
     },
     "No Gold Haunted Max Bookskip Eggplant%": {
       "time": "17:44.153",
       "player": "Hectique",
-      "video": "https://youtu.be/WaNgPCAdLYE"
+      "video": "https://youtu.be/WaNgPCAdLYE",
+      "slug": "ng-hmax-bookskip-eggplant"
     },
     "Low% Eggplant": {
       "time": "10:31.568",
       "player": "d_tea",
-      "video": "https://youtu.be/d1UZFTkLBtQ"
+      "video": "https://youtu.be/d1UZFTkLBtQ",
+      "slug": "low-eggplant"
     },
     "Max Low% Eggplant": {
       "time": "17:44.153",
       "player": "Hectique",
-      "video": "https://youtu.be/WaNgPCAdLYE"
+      "video": "https://youtu.be/WaNgPCAdLYE",
+      "slug": "max-low-eggplant"
     },
     "Haunted Max Low% Eggplant": {
       "time": "17:44.153",
       "player": "Hectique",
-      "video": "https://youtu.be/WaNgPCAdLYE"
+      "video": "https://youtu.be/WaNgPCAdLYE",
+      "slug": "hmax-low-eggplant"
     },
     "No Gold Low% Eggplant": {
       "time": "17:44.153",
       "player": "Hectique",
-      "video": "https://youtu.be/WaNgPCAdLYE"
+      "video": "https://youtu.be/WaNgPCAdLYE",
+      "slug": "ng-low-eggplant"
     },
     "No Gold Max Low% Eggplant": {
       "time": "17:44.153",
       "player": "Hectique",
-      "video": "https://youtu.be/WaNgPCAdLYE"
+      "video": "https://youtu.be/WaNgPCAdLYE",
+      "slug": "ng-max-low-eggplant"
     },
     "No Gold Haunted Max Low% Eggplant": {
       "time": "17:44.153",
       "player": "Hectique",
-      "video": "https://youtu.be/WaNgPCAdLYE"
+      "video": "https://youtu.be/WaNgPCAdLYE",
+      "slug": "ng-hmax-low-eggplant"
     },
     "Bookskip Shield Run": {
       "time": "5:02.092",
       "player": "Hectique",
-      "video": "https://youtu.be/mWLoYJ5WMZ0"
+      "video": "https://youtu.be/mWLoYJ5WMZ0",
+      "slug": "bookskip-shield"
     },
     "Max Bookskip Shield Run": {
       "time": "6:08.750",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/1712590390"
+      "video": "https://www.twitch.tv/videos/1712590390",
+      "slug": "max-bookskip-shield"
     },
     "No Gold Bookskip Shield Run": {
       "time": "10:30.565",
       "player": "Hectique",
-      "video": "https://youtu.be/ezMrthGwcFE"
+      "video": "https://youtu.be/ezMrthGwcFE",
+      "slug": "ng-bookskip-shield"
     },
     "No Gold Max Bookskip Shield Run": {
       "time": "10:30.565",
       "player": "Hectique",
-      "video": "https://youtu.be/ezMrthGwcFE"
+      "video": "https://youtu.be/ezMrthGwcFE",
+      "slug": "ng-max-bookskip-shield"
     },
     "Low% Shield Run": {
       "time": "6:51.380",
       "player": "SoulAro",
-      "video": "https://youtu.be/y2uP0MaskxY"
+      "video": "https://youtu.be/y2uP0MaskxY",
+      "slug": "low-shield"
     },
     "Max Low% Shield Run": {
       "time": "20:45.376",
       "player": "Hectique",
-      "video": "https://youtu.be/gm9gcPIbTJk"
+      "video": "https://youtu.be/gm9gcPIbTJk",
+      "slug": "max-low-shield"
     },
     "No Gold Low% Shield Run": {
       "time": "12:17.693",
       "player": "TBPengy",
-      "video": "https://youtu.be/mgVxLGmTTQw"
+      "video": "https://youtu.be/mgVxLGmTTQw",
+      "slug": "ng-low-shield"
     },
     "No Gold Max Low% Shield Run": {
       "time": "20:45.376",
       "player": "Hectique",
-      "video": "https://youtu.be/gm9gcPIbTJk"
+      "video": "https://youtu.be/gm9gcPIbTJk",
+      "slug": "ng-max-low-shield"
     },
     "No% Hell": {
       "time": "12:31.482",
       "player": "d_tea",
-      "video": "https://youtu.be/-rrMq_-caMQ"
+      "video": "https://youtu.be/-rrMq_-caMQ",
+      "slug": "no-hell"
     },
     "Max No% Hell": {
       "time": "19:33.899",
       "player": "Hectique",
-      "video": "https://youtu.be/rJUp-d_Pzrw"
+      "video": "https://youtu.be/rJUp-d_Pzrw",
+      "slug": "max-no-hell"
     },
     "No% Eggplant": {
       "time": "41:28.576",
       "player": "Hectique",
-      "video": "https://youtu.be/SsO0rkEGWm0"
+      "video": "https://youtu.be/SsO0rkEGWm0",
+      "slug": "no-eggplant"
     },
     "Temple Shortcut Low% Hell": {
       "time": "2:28.996",
       "player": "TBPengy",
-      "video": "https://youtu.be/77nd5xKJv_w"
+      "video": "https://youtu.be/77nd5xKJv_w",
+      "slug": "ts-low-hell"
     }
   },
   "Memes": {
     "Udjat Run": {
       "time": "14:22.531",
       "player": "Hectique",
-      "video": "https://youtu.be/BSDsTOBQ82I"
+      "video": "https://youtu.be/BSDsTOBQ82I",
+      "slug": "udjat-run"
     },
     "Ankh Run": {
       "time": "9:32.029",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/1975971526"
+      "video": "https://www.twitch.tv/videos/1975971526",
+      "slug": "ankh-run"
     },
     "Hedjet Run": {
       "time": "25:26.693",
       "player": "Hectique",
-      "video": "https://youtu.be/Em-wZDhudXk"
+      "video": "https://youtu.be/Em-wZDhudXk",
+      "slug": "hedjet-run"
     },
     "Scepter Run": {
       "time": "6:20.005",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/1975970118"
+      "video": "https://www.twitch.tv/videos/1975970118",
+      "slug": "scepter-run"
     },
     "Book of the Dead Run": {
       "time": "11:19.798",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/1983093873"
+      "video": "https://www.twitch.tv/videos/1983093873",
+      "slug": "book-of-the-dead-run"
     },
     "Amulet Run": {
       "time": "7:41.371",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/1971268595"
+      "video": "https://www.twitch.tv/videos/1971268595",
+      "slug": "amulet-run"
     },
     "Key to Yama": {
       "time": "6:15.419",
       "player": "Spef",
-      "video": "https://www.youtube.com/watch?v=fyek5BAk5w0"
+      "video": "https://www.youtube.com/watch?v=fyek5BAk5w0",
+      "slug": "key-to-yama"
     },
     "Snowball%": {
       "time": "7:08.397",
       "player": "jjg27",
-      "video": "https://www.youtube.com/watch?v=_KSOdCGhpqE"
+      "video": "https://www.youtube.com/watch?v=_KSOdCGhpqE",
+      "slug": "snowball"
     },
     "Landmine%": {
       "time": "6:18.603",
       "player": "jjg27",
-      "video": "https://www.youtube.com/watch?v=jd-TwHSu6RQ"
+      "video": "https://www.youtube.com/watch?v=jd-TwHSu6RQ",
+      "slug": "landmine"
     },
     "Basejump%": {
       "time": "4:41.149",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=SbCCaocs8Ro"
+      "video": "https://www.youtube.com/watch?v=SbCCaocs8Ro",
+      "slug": "basejump"
     },
     "Voidmec Chain Hell%": {
       "time": "9:25.699",
       "player": "Hectique",
-      "video": "https://youtu.be/xE7ZI67xRMI"
+      "video": "https://youtu.be/xE7ZI67xRMI",
+      "slug": "voidmec-chain-hell"
     },
     "Master Sword Chain Low% Hell": {
       "time": "6:28.223",
       "player": "Hectique",
-      "video": "https://youtu.be/rtYeV1FlmoI"
+      "video": "https://youtu.be/rtYeV1FlmoI",
+      "slug": "master-sword-chain-low-hell"
     },
     "Draining Olmec": {
       "time": "2:19.583",
       "player": "BlueCadet-3",
-      "video": "https://youtu.be/0TjHgoBJorE"
+      "video": "https://youtu.be/0TjHgoBJorE",
+      "slug": "draining-olmec"
     },
     "No TP Draining Olmec": {
       "time": "3:05.914",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=wgyny67JS0g"
+      "video": "https://www.youtube.com/watch?v=wgyny67JS0g",
+      "slug": "notp-draining-olmec"
     },
     "Low% Petrock": {
       "time": "2:53.884",
       "player": "Hectique",
-      "video": "https://youtu.be/RAhXhNRjVpM"
+      "video": "https://youtu.be/RAhXhNRjVpM",
+      "slug": "low-petrock"
     },
     "Low% Firepot": {
       "time": "2:47.967",
       "player": "WGPL",
-      "video": "https://www.youtube.com/watch?v=E5f7kB0I-l8"
+      "video": "https://www.youtube.com/watch?v=E5f7kB0I-l8",
+      "slug": "low-firepot"
     },
     "Reverse Shortcut Low%": {
       "time": "12:14.050",
       "player": "Hectique",
-      "video": "https://youtu.be/FNOpMbkYdEU"
+      "video": "https://youtu.be/FNOpMbkYdEU",
+      "slug": "reverse-shortcut-low"
     },
     "Kirbywarp": {
       "time": "33:59.100",
       "player": "BronxTaco",
-      "video": "https://youtu.be/9_RiuswGYRc"
+      "video": "https://youtu.be/9_RiuswGYRc",
+      "slug": "kirbywarp"
     },
     "Credits Warp": {
       "time": "43:32.116",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2195316684"
+      "video": "https://www.twitch.tv/videos/2195316684",
+      "slug": "credits-warp"
     },
     "Bookskip Book of the Dead Run": {
       "time": "11:08.970",
       "player": "Hectique",
-      "video": "https://youtu.be/tmybTB2Xa6s"
+      "video": "https://youtu.be/tmybTB2Xa6s",
+      "slug": "bookskip-book-of-the-dead-run"
     },
     "Bookskip Scepter Run": {
       "time": "4:27.273",
       "player": "Hectique",
-      "video": "https://www.twitch.tv/videos/2669405328"
+      "video": "https://www.twitch.tv/videos/2669405328",
+      "slug": "bookskip-scepter-run"
     },
     "Voidmec Bookskip Hell%": {
       "time": "7:47.506",
       "player": "Hectique",
-      "video": "https://youtu.be/kDJQ9gPMir4"
+      "video": "https://youtu.be/kDJQ9gPMir4",
+      "slug": "voidmec-bookskip-hell"
     },
     "Low% Hell Petrock": {
       "time": "14:37.869",
       "player": "Hectique",
-      "video": "https://youtu.be/0TyuGCXML0Q"
+      "video": "https://youtu.be/0TyuGCXML0Q",
+      "slug": "low-hell-petrock"
     }
   }
 }
